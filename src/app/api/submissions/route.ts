@@ -5,8 +5,6 @@ import { sendEmail } from "@/lib/email";
 import { buildEmailTemplate } from "@/lib/email-template";
 import { TEAM_EMAIL } from "@/lib/emails";
 
-// ─── GET — list submissions (admin only) ─────────────────────────────
-
 export async function GET(req: NextRequest) {
   const authError = await requireAdmin();
   if (authError) return authError;
@@ -52,8 +50,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(sorted);
 }
 
-// ─── POST — accept submission ───────────────────────────────────────
-
 export async function POST(req: NextRequest) {
   let body: unknown;
 
@@ -75,8 +71,6 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // ─── Validate form ─────────────────────────────────────────────
-
   const { data: form, error: formErr } = await admin
     .from("forms")
     .select("id, title, status, deadline, requires_review")
@@ -86,12 +80,11 @@ export async function POST(req: NextRequest) {
 
   if (formErr || !form) {
     return NextResponse.json(
-      { error: "Form not found or not accepting submissions." },
+      { message: "This form is not available or is not accepting submissions." },
       { status: 404 }
     );
   }
 
-  // ✅ Fixed deadline check (timezone-safe)
   const now = new Date().toISOString();
 
   if (form.deadline && form.deadline < now) {
@@ -104,8 +97,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ─── Get fields ─────────────────────────────────────────────
-
   const { data: fields, error: fieldsErr } = await admin
     .from("form_fields")
     .select("id, label, required")
@@ -113,8 +104,6 @@ export async function POST(req: NextRequest) {
     .eq("is_active", true);
 
   if (fieldsErr) return serverError(fieldsErr.message);
-
-  // ─── Validate required fields ─────────────────────────────
 
   for (const field of fields ?? []) {
     if (field.required) {
@@ -124,14 +113,12 @@ export async function POST(req: NextRequest) {
 
       if (isEmpty) {
         return NextResponse.json(
-          { error: `"${field.label}" is required.` },
+          { message: `"${field.label}" is required.` },
           { status: 422 }
         );
       }
     }
   }
-
-  // ─── Extract email for duplicate check ─────────────────────
 
   const emailField = fields?.find((f) =>
     f.label.toLowerCase().includes("email")
@@ -142,7 +129,7 @@ export async function POST(req: NextRequest) {
     : "";
 
   if (emailField && applicantEmail && applicantEmail.includes("@")) {
-    const { data: existingSubmission, error: duplicateErr } = await admin
+    const { data: existingSubmissions, error: duplicateErr } = await admin
       .from("form_submission_values")
       .select(`
         submission_id,
@@ -151,19 +138,29 @@ export async function POST(req: NextRequest) {
       .eq("field_id", emailField.id)
       .ilike("value", applicantEmail)
       .eq("submission.form_id", form_id)
-      .maybeSingle();
+      .limit(1);
 
-    if (duplicateErr) return serverError(duplicateErr.message);
-
-    if (existingSubmission) {
+    if (duplicateErr) {
+      console.error("Duplicate check failed:", duplicateErr);
       return NextResponse.json(
-        { message: "You have already submitted this form." },
+        {
+          message:
+            "We could not verify your previous submission at the moment. Please try again.",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (existingSubmissions && existingSubmissions.length > 0) {
+      return NextResponse.json(
+        {
+          message:
+            "You have already submitted this form. Multiple responses are not allowed.",
+        },
         { status: 409 }
       );
     }
   }
-
-  // ─── Insert submission ─────────────────────────────────────
 
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
   const initialStatus = form.requires_review ? "pending" : "approved";
@@ -204,8 +201,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ─── File URLs ─────────────────────────────────────────────
-
   const signedUrls: Record<string, string> = {};
 
   for (const row of valueRows) {
@@ -234,8 +229,6 @@ export async function POST(req: NextRequest) {
     })
     .join("");
 
-  // ─── Team notification ─────────────────────────────────────
-
   try {
     const adminHtml = buildEmailTemplate({
       subject: `New Submission — ${form.title}`,
@@ -257,8 +250,6 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("Team email failed:", err);
   }
-
-  // ─── Applicant email ─────────────────────────────────────
 
   if (applicantEmail && applicantEmail.includes("@")) {
     try {
