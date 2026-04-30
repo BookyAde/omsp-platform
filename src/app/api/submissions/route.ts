@@ -5,7 +5,7 @@ import { sendEmail } from "@/lib/email";
 import { buildEmailTemplate } from "@/lib/email-template";
 import { TEAM_EMAIL } from "@/lib/emails";
 
-// ─── GET — list submissions (admin only) ─────────────────────────────────────
+// ─── GET — list submissions (admin only) ─────────────────────────────
 
 export async function GET(req: NextRequest) {
   const authError = await requireAdmin();
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(sorted);
 }
 
-// ─── POST — accept a public form submission ─────────────────────────
+// ─── POST — accept submission ───────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -75,7 +75,8 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // 1. Validate form
+  // ─── Validate form ─────────────────────────────────────────────
+
   const { data: form, error: formErr } = await admin
     .from("forms")
     .select("id, title, status, deadline, requires_review")
@@ -90,14 +91,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (form.deadline && new Date(form.deadline) < new Date()) {
+  // ✅ Fixed deadline check (timezone-safe)
+  const now = new Date().toISOString();
+
+  if (form.deadline && form.deadline < now) {
     return NextResponse.json(
-      { error: "This form has closed." },
+      {
+        message:
+          "This form is now closed. Thank you for your interest. It is no longer accepting responses.",
+      },
       { status: 410 }
     );
   }
 
-  // 2. Get fields
+  // ─── Get fields ─────────────────────────────────────────────
+
   const { data: fields, error: fieldsErr } = await admin
     .from("form_fields")
     .select("id, label, required")
@@ -106,7 +114,8 @@ export async function POST(req: NextRequest) {
 
   if (fieldsErr) return serverError(fieldsErr.message);
 
-  // 3. Validate required fields
+  // ─── Validate required fields ─────────────────────────────
+
   for (const field of fields ?? []) {
     if (field.required) {
       const val = values[field.id];
@@ -122,9 +131,41 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 4. Insert submission
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  // ─── Extract email for duplicate check ─────────────────────
 
+  const emailField = fields?.find((f) =>
+    f.label.toLowerCase().includes("email")
+  );
+
+  const applicantEmail = emailField
+    ? String(values[emailField.id] ?? "").trim().toLowerCase()
+    : "";
+
+  if (emailField && applicantEmail && applicantEmail.includes("@")) {
+    const { data: existingSubmission, error: duplicateErr } = await admin
+      .from("form_submission_values")
+      .select(`
+        submission_id,
+        submission:form_submissions!inner(id, form_id)
+      `)
+      .eq("field_id", emailField.id)
+      .ilike("value", applicantEmail)
+      .eq("submission.form_id", form_id)
+      .maybeSingle();
+
+    if (duplicateErr) return serverError(duplicateErr.message);
+
+    if (existingSubmission) {
+      return NextResponse.json(
+        { message: "You have already submitted this form." },
+        { status: 409 }
+      );
+    }
+  }
+
+  // ─── Insert submission ─────────────────────────────────────
+
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
   const initialStatus = form.requires_review ? "pending" : "approved";
 
   const { data: submission, error: subErr } = await admin
@@ -139,7 +180,6 @@ export async function POST(req: NextRequest) {
 
   if (subErr) return serverError(subErr.message);
 
-  // 5. Insert values
   const knownFieldIds = new Set((fields ?? []).map((f) => f.id));
 
   const valueRows = Object.entries(values)
@@ -147,7 +187,10 @@ export async function POST(req: NextRequest) {
     .map(([fieldId, value]) => ({
       submission_id: submission.id,
       field_id: fieldId,
-      value: String(value ?? ""),
+      value:
+        fieldId === emailField?.id
+          ? String(value ?? "").trim().toLowerCase()
+          : String(value ?? ""),
     }));
 
   if (valueRows.length > 0) {
@@ -161,7 +204,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ─── Generate signed file URLs ─────────────────────────
+  // ─── File URLs ─────────────────────────────────────────────
 
   const signedUrls: Record<string, string> = {};
 
@@ -177,46 +220,34 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ─── Format submission for email ───────────────────────
-
   const formattedValues = valueRows
     .map((row: any) => {
-      const field = fields.find((f) => f.id === row.field_id);
+      const field = fields?.find((f) => f.id === row.field_id);
       const label = field?.label ?? "Field";
 
       if (row.value && row.value.includes("forms/")) {
-        return `
-          <p><strong>${label}:</strong><br/>
-          <a href="${signedUrls[row.value]}" target="_blank">View file</a></p>
-        `;
+        return `<p><strong>${label}:</strong><br/>
+          <a href="${signedUrls[row.value]}" target="_blank">View file</a></p>`;
       }
 
       return `<p><strong>${label}:</strong> ${row.value}</p>`;
     })
     .join("");
 
-  // ─── Send team notification email ─────────────────────────────────
+  // ─── Team notification ─────────────────────────────────────
 
   try {
     const adminHtml = buildEmailTemplate({
       subject: `New Submission — ${form.title}`,
       content: `
         <p>A new submission has been received.</p>
-
         <p><strong>Form:</strong> ${form.title}</p>
         <p><strong>Status:</strong> ${initialStatus}</p>
-
         <hr/>
-
         ${formattedValues}
-
-        <hr/>
-
-        <p style="font-size:12px;color:#64748b;">
-          Submitted at: ${new Date().toLocaleString()}
-        </p>
       `,
     });
+
     await sendEmail({
       to: TEAM_EMAIL,
       subject: `New Submission — ${form.title}`,
@@ -224,18 +255,10 @@ export async function POST(req: NextRequest) {
       senderType: "team",
     });
   } catch (err) {
-    console.error("Team notification email failed:", err);
+    console.error("Team email failed:", err);
   }
 
-  // ─── Applicant confirmation email ─────────────────────
-
-  const emailField = fields.find((f) =>
-    f.label.toLowerCase().includes("email")
-  );
-
-  const applicantEmail = emailField
-    ? String(values[emailField.id] ?? "").trim()
-    : "";
+  // ─── Applicant email ─────────────────────────────────────
 
   if (applicantEmail && applicantEmail.includes("@")) {
     try {
