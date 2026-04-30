@@ -1,0 +1,25 @@
+# Node / Next
+node_modules/
+.next/
+out/
+
+# Environment variables
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / misc
+.DS_Store
+Thumbs.db
+
+# Archives / backups
+archive/
+_archive/
+omsp_archive/
+
+# Vercel
+.vercel
