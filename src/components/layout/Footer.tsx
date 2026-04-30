@@ -14,8 +14,8 @@ const FOOTER_LINKS = {
     { label: "Contact Us",    href: "/contact" },
   ],
   Contact: [
-    { label: "support@omsp.org", href: "mailto:support@omsp.org" },
-    { label: "team@omsp.org",    href: "mailto:team@omsp.org" },
+    { label: "support@omspglobal.org", href: "mailto:support@omspglobal.org" },
+    { label: "team@omspglobal.org",    href: "mailto:team@omspglobal.org" },
   ],
 };
 

@@ -56,9 +56,9 @@ export default function ContactPage() {
               <h2 className="font-display text-xl font-bold text-white mb-6">Contact Details</h2>
               <div className="space-y-5">
                 {[
-                  { label: "General Support", email: "support@omsp.org" },
-                  { label: "Team",            email: "team@omsp.org" },
-                  { label: "Partnerships",    email: "admin@omsp.org" },
+                  { label: "General Support", email: "support@omspglobal.org" },
+                  { label: "Team",            email: "team@omspglobal.org" },
+                  { label: "Partnerships",    email: "admin@omspglobal.org" },
                 ].map(({ label, email }) => (
                   <div key={email} className="glass-card p-5">
                     <p className="text-slate-500 text-xs font-mono mb-1">{label}</p>

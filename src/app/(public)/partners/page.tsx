@@ -108,8 +108,8 @@ export default async function PartnersPage() {
             <Link href="/contact" className="btn-primary px-8 py-3.5 text-base">
               Get in Touch
             </Link>
-            <a href="mailto:team@omsp.org" className="btn-ghost px-8 py-3.5 text-base">
-              team@omsp.org
+            <a href="mailto:team@omspglobal.org" className="btn-ghost px-8 py-3.5 text-base">
+              team@omspglobal.org
             </a>
           </div>
         </div>
