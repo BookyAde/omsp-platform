@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase";
 import { requireAdmin, badRequest, serverError } from "@/lib/server-utils";
 import { sendEmail } from "@/lib/email";
 import { buildEmailTemplate } from "@/lib/email-template";
+import { TEAM_EMAIL } from "@/lib/emails";
 
 // ─── GET — list submissions (admin only) ─────────────────────────────────────
 
@@ -194,7 +195,7 @@ export async function POST(req: NextRequest) {
     })
     .join("");
 
-  // ─── Send admin email ─────────────────────────────────
+  // ─── Send team notification email ─────────────────────────────────
 
   try {
     const adminHtml = buildEmailTemplate({
@@ -216,14 +217,14 @@ export async function POST(req: NextRequest) {
         </p>
       `,
     });
-
     await sendEmail({
-      to: "admin@omspglobal.org", // change this
+      to: TEAM_EMAIL,
       subject: `New Submission — ${form.title}`,
       html: adminHtml,
+      senderType: "team",
     });
   } catch (err) {
-    console.error("Admin email failed:", err);
+    console.error("Team notification email failed:", err);
   }
 
   // ─── Applicant confirmation email ─────────────────────
@@ -252,6 +253,7 @@ export async function POST(req: NextRequest) {
         to: applicantEmail,
         subject: "Application Received",
         html,
+        senderType: "team",
       });
     } catch (err) {
       console.error("Applicant email failed:", err);
