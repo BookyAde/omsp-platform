@@ -11,6 +11,8 @@ export async function POST(req: NextRequest) {
     const parsed = contactSchema.safeParse(body);
 
     if (!parsed.success) {
+      console.error("Contact validation error:", parsed.error.flatten());
+
       return NextResponse.json(
         { error: "Invalid submission.", details: parsed.error.flatten() },
         { status: 400 }
@@ -26,54 +28,69 @@ export async function POST(req: NextRequest) {
       message: parsed.data.message,
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Contact database error:", error);
 
-    const supportHtml = buildEmailTemplate({
-      subject: `New Support Message — ${parsed.data.subject}`,
-      content: `
-        <p>A new contact message has been submitted.</p>
+      return NextResponse.json(
+        { error: "Failed to save message." },
+        { status: 500 }
+      );
+    }
 
-        <p><strong>Name:</strong> ${parsed.data.name}</p>
-        <p><strong>Email:</strong> ${parsed.data.email}</p>
-        <p><strong>Subject:</strong> ${parsed.data.subject}</p>
+    try {
+      const supportHtml = buildEmailTemplate({
+        subject: `New Support Message — ${parsed.data.subject}`,
+        content: `
+          <p>A new contact message has been submitted.</p>
 
-        <hr/>
+          <p><strong>Name:</strong> ${parsed.data.name}</p>
+          <p><strong>Email:</strong> ${parsed.data.email}</p>
+          <p><strong>Subject:</strong> ${parsed.data.subject}</p>
 
-        <p><strong>Message:</strong></p>
-        <p>${parsed.data.message}</p>
-      `,
-    });
+          <hr/>
 
-    await sendEmail({
-      to: SUPPORT_EMAIL,
-      subject: `New Support Message — ${parsed.data.subject}`,
-      html: supportHtml,
-      senderType: "support",
-      replyTo: parsed.data.email,
-    });
+          <p><strong>Message:</strong></p>
+          <p>${parsed.data.message}</p>
+        `,
+      });
 
-    const userHtml = buildEmailTemplate({
-      subject: "We received your message",
-      content: `
-        <p>Hello ${parsed.data.name},</p>
-        <p>Thank you for contacting OMSP.</p>
-        <p>We have received your message and our support team will get back to you soon.</p>
-        <p>— OMSP Support</p>
-      `,
-    });
+      await sendEmail({
+        to: SUPPORT_EMAIL,
+        subject: `New Support Message — ${parsed.data.subject}`,
+        html: supportHtml,
+        senderType: "support",
+        replyTo: parsed.data.email,
+      });
 
-    await sendEmail({
-      to: parsed.data.email,
-      subject: "We received your message",
-      html: userHtml,
-      senderType: "support",
-    });
+      const userHtml = buildEmailTemplate({
+        subject: "We received your message",
+        content: `
+          <p>Hello ${parsed.data.name},</p>
+          <p>Thank you for contacting OMSP.</p>
+          <p>We have received your message and our support team will get back to you soon.</p>
+          <p>— OMSP Support</p>
+        `,
+      });
 
-    return NextResponse.json({ success: true }, { status: 201 });
-  } catch (err) {
-    console.error("Contact submission error:", err);
+      await sendEmail({
+        to: parsed.data.email,
+        subject: "We received your message",
+        html: userHtml,
+        senderType: "support",
+      });
+    } catch (emailError) {
+      console.error("Contact email failed but message was saved:", emailError);
+    }
+
     return NextResponse.json(
-      { error: "Failed to save message." },
+      { success: true, message: "Message saved successfully." },
+      { status: 201 }
+    );
+  } catch (err) {
+    console.error("Contact submission unexpected error:", err);
+
+    return NextResponse.json(
+      { error: "Failed to process message." },
       { status: 500 }
     );
   }
