@@ -22,7 +22,7 @@ async function getForm(slug: string): Promise<FormWithFields | null> {
   if (!data) return null;
 
   data.form_fields = (data.form_fields ?? [])
-    .filter((f: any) => f.is_active !== false)
+    .filter((field: any) => field.is_active !== false)
     .sort((a: any, b: any) => a.field_order - b.field_order);
 
   return data as FormWithFields;
@@ -34,11 +34,13 @@ export async function generateMetadata({
   const form = await getForm(params.slug);
 
   if (!form) {
-    return { title: "Form Not Found" };
+    return {
+      title: "Form Not Found | OMSP",
+    };
   }
 
   return {
-    title: form.title,
+    title: `${form.title} | OMSP`,
     description: form.description ?? `Apply via OMSP — ${form.title}`,
   };
 }
@@ -51,59 +53,67 @@ export default async function PublicFormPage({ params }: PageProps) {
   const expired = isExpired(form.deadline);
 
   return (
-    <div className="min-h-screen bg-ocean-950 flex flex-col">
-      <header className="border-b border-ocean-800/60 bg-ocean-900/80 backdrop-blur-sm">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-3">
+    <div className="min-h-screen bg-ocean-950 text-white">
+      <header className="sticky top-0 z-30 border-b border-ocean-800/60 bg-ocean-950/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
           <a
             href="/"
-            className="text-teal-400 hover:text-teal-300 transition-colors text-sm font-medium"
+            className="text-sm font-semibold text-teal-400 transition-colors hover:text-teal-300"
           >
             OMSP
           </a>
-          <span className="text-ocean-700">/</span>
-          <span className="text-slate-400 text-sm truncate">
-            {form.title}
-          </span>
+
+          <a
+            href="/opportunities"
+            className="text-xs font-medium text-slate-400 transition-colors hover:text-white"
+          >
+            Opportunities
+          </a>
         </div>
       </header>
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-12 lg:py-16">
-        <div className="mb-10">
-          <h1 className="font-display text-3xl lg:text-4xl font-bold text-white leading-tight">
+      <main className="mx-auto w-full max-w-4xl px-6 py-10 lg:py-14">
+        <section className="mb-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-teal-400">
+            OMSP Application Portal
+          </p>
+
+          <h1 className="font-display text-3xl font-bold leading-tight text-white lg:text-4xl">
             {form.title}
           </h1>
 
           {form.description && (
-            <p className="mt-4 text-slate-300 leading-relaxed">
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
               {form.description}
             </p>
           )}
 
-          {form.deadline && (
-            <div className="mt-4 flex items-center gap-2">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <span className="rounded-full border border-teal-400/20 bg-teal-500/10 px-3 py-1 text-xs font-medium text-teal-300">
+              Professional Application
+            </span>
+
+            {form.deadline && (
               <span
-                className={`w-2 h-2 rounded-full ${
-                  expired ? "bg-red-400" : "bg-teal-400"
-                }`}
-              />
-              <span
-                className={`text-sm font-mono ${
-                  expired ? "text-red-400" : "text-slate-400"
+                className={`rounded-full border px-3 py-1 text-xs font-mono ${
+                  expired
+                    ? "border-red-400/20 bg-red-500/10 text-red-300"
+                    : "border-white/10 bg-white/5 text-slate-300"
                 }`}
               >
                 {expired
                   ? `Closed: ${formatDate(form.deadline)}`
                   : `Deadline: ${formatDate(form.deadline)}`}
               </span>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </section>
 
         {expired ? (
-          <div className="glass-card p-10 sm:p-12 text-center">
-            <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+          <div className="glass-card p-10 text-center sm:p-12">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-500/10">
               <svg
-                className="w-7 h-7 text-red-400"
+                className="h-7 w-7 text-red-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -117,18 +127,18 @@ export default async function PublicFormPage({ params }: PageProps) {
               </svg>
             </div>
 
-            <h2 className="font-display text-xl font-bold text-white mb-2">
+            <h2 className="font-display mb-2 text-xl font-bold text-white">
               This form is now closed
             </h2>
 
-            <p className="text-slate-400 text-sm leading-relaxed max-w-md mx-auto">
+            <p className="mx-auto max-w-md text-sm leading-relaxed text-slate-400">
               Thank you for your interest. This form is no longer accepting
               responses at this time.
             </p>
 
             <a
               href="/opportunities"
-              className="btn-ghost inline-flex mt-6 text-sm px-6 py-2.5"
+              className="btn-ghost mt-6 inline-flex px-6 py-2.5 text-sm"
             >
               View Other Opportunities
             </a>
@@ -139,7 +149,7 @@ export default async function PublicFormPage({ params }: PageProps) {
       </main>
 
       <footer className="border-t border-ocean-800/40 py-6">
-        <p className="text-center text-slate-600 text-xs">
+        <p className="text-center text-xs text-slate-600">
           Powered by OMSP &mdash; Organization of Marine Science Professionals
         </p>
       </footer>
