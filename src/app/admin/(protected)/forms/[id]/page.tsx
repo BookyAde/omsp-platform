@@ -17,40 +17,37 @@ export default function EditFormPage() {
       try {
         setLoading(true);
 
-        console.log("---- EDIT FORM PAGE ----");
-        console.log("Form ID from route:", formId);
-
-        const res = await fetch(`/api/forms/${formId}`);
-        console.log("API status:", res.status, res.statusText);
+        const res = await fetch(`/api/forms/${formId}`, {
+          cache: "no-store",
+        });
 
         if (!res.ok) {
-          console.error("API request failed. Redirecting back to /admin/forms");
           router.push("/admin/forms");
           return;
         }
 
         const data = await res.json();
-        console.log("RAW API RESPONSE:", data);
 
         const form = data.form ?? data;
         const rawFields = data.fields ?? data.form_fields ?? form.fields ?? [];
 
-        console.log("FORM OBJECT USED:", form);
-        console.log("RAW FIELDS USED:", rawFields);
-
         const mappedFields = Array.isArray(rawFields)
-          ? rawFields.map((f: any, i: number) => ({
-              id: f.id,
-              label: f.label ?? "",
-              field_type: f.field_type,
-              placeholder: f.placeholder ?? null,
-              required: !!f.required,
-              options: f.options ?? null,
-              field_order: f.field_order ?? f.sort_order ?? i,
+          ? rawFields.map((field: any, index: number) => ({
+              id: field.id,
+              label: field.label ?? "",
+              field_type: field.field_type,
+              placeholder: field.placeholder ?? null,
+              required: Boolean(field.required),
+              options: field.options ?? null,
+              field_order: field.field_order ?? index,
+              is_active: field.is_active ?? true,
+
+              step: field.step ?? "General",
+
+              accepted_types: field.accepted_types ?? [],
+              max_size_mb: field.max_size_mb ?? 5,
             }))
           : [];
-
-        console.log("MAPPED FIELDS:", mappedFields);
 
         const builtInitialData = {
           id: form.id,
@@ -59,11 +56,13 @@ export default function EditFormPage() {
           description: form.description ?? "",
           status: form.status ?? "draft",
           visibility: form.visibility ?? "public",
-          deadline: form.deadline ?? null,
-          fields: mappedFields,        
-        };
 
-        console.log("FINAL INITIAL DATA PASSED TO FORMBUILDER:", builtInitialData);
+          requires_review: form.requires_review ?? false,
+          form_mode: form.form_mode ?? "single_page",
+
+          deadline: form.deadline ?? null,
+          fields: mappedFields,
+        };
 
         setInitialData(builtInitialData);
       } catch (error) {

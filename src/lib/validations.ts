@@ -59,6 +59,9 @@ export const formFieldSchema = z
 
     accepted_types: z.array(z.string()).optional().nullable(),
     max_size_mb: z.number().positive().optional().nullable(),
+
+    // Named step/group for multi-step forms
+    step: z.string().trim().min(1).max(100).optional().default("General"),
   })
   .superRefine((field, ctx) => {
     if (OPTION_TYPES.has(field.field_type)) {
@@ -85,6 +88,9 @@ export const formSchema = z.object({
   fields: z.array(formFieldSchema).max(100).optional().default([]),
   visibility: z.enum(["public", "private"]).default("public"),
   requires_review: z.boolean().optional().default(false),
+
+  // Public form display mode
+  form_mode: z.enum(["single_page", "multi_step"]).optional().default("single_page"),
 });
 
 export type FormInput = z.infer<typeof formSchema>;

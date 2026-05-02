@@ -11,11 +11,46 @@ interface PublicFormClientProps {
 type FieldValue = string | string[] | File | null;
 type FieldValues = Record<string, FieldValue>;
 type Status = "idle" | "loading" | "success" | "error" | "duplicate";
+type FormMode = "single_page" | "multi_step";
+
+type StepGroup = {
+  title: string;
+  fields: FormField[];
+};
 
 export default function PublicFormClient({ form }: PublicFormClientProps) {
   const [values, setValues] = useState<FieldValues>({});
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [step, setStep] = useState(0);
+
+  const formMode: FormMode = form.form_mode ?? "single_page";
+  const isMultiStep = formMode === "multi_step";
+
+  const steps = useMemo<StepGroup[]>((() => {
+    const groups: Record<string, FormField[]> = {};
+
+    for (const field of form.form_fields) {
+      const stepName = field.step?.trim() || "General";
+
+      if (!groups[stepName]) {
+        groups[stepName] = [];
+      }
+
+      groups[stepName].push(field);
+    }
+
+    const result = Object.entries(groups).map(([title, fields]) => ({
+      title,
+      fields,
+    }));
+
+    return result.length ? result : [{ title: "General", fields: [] }];
+  }) as () => StepGroup[], [form.form_fields]);
+
+  const currentStep = steps[step] ?? { title: "General", fields: [] };
+  const visibleFields = isMultiStep ? currentStep.fields : form.form_fields;
+  const isLastStep = step === steps.length - 1;
 
   const requiredFields = useMemo(
     () => form.form_fields.filter((field) => field.required),
@@ -39,6 +74,11 @@ export default function PublicFormClient({ form }: PublicFormClientProps) {
       ? 100
       : Math.round((completedRequired / requiredFields.length) * 100);
 
+  function getFieldIndex(fieldId: string) {
+    const index = form.form_fields.findIndex((field) => field.id === fieldId);
+    return index >= 0 ? index : 0;
+  }
+
   function handleChange(fieldId: string, value: FieldValue) {
     setValues((prev) => ({ ...prev, [fieldId]: value }));
   }
@@ -54,6 +94,44 @@ export default function PublicFormClient({ form }: PublicFormClientProps) {
       : current.filter((value) => value !== option);
 
     setValues((prev) => ({ ...prev, [fieldId]: updated }));
+  }
+
+  function validateFields(fieldsToValidate: FormField[]) {
+    for (const field of fieldsToValidate) {
+      if (!field.required) continue;
+
+      const val = values[field.id];
+
+      const isEmpty =
+        !val ||
+        (Array.isArray(val) && val.length === 0) ||
+        (typeof val === "string" && val.trim() === "");
+
+      if (isEmpty) {
+        setErrorMsg(`"${field.label}" is required.`);
+        setStatus("error");
+        return false;
+      }
+    }
+
+    setErrorMsg("");
+    if (status === "error") setStatus("idle");
+    return true;
+  }
+
+  function goNext() {
+    if (!validateFields(currentStep.fields)) return;
+
+    setStep((current) => Math.min(current + 1, steps.length - 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function goBack() {
+    setErrorMsg("");
+    if (status === "error") setStatus("idle");
+
+    setStep((current) => Math.max(current - 1, 0));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function uploadFile(field: FormField, file: File) {
@@ -81,22 +159,7 @@ export default function PublicFormClient({ form }: PublicFormClientProps) {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    for (const field of form.form_fields) {
-      if (!field.required) continue;
-
-      const val = values[field.id];
-
-      const isEmpty =
-        !val ||
-        (Array.isArray(val) && val.length === 0) ||
-        (typeof val === "string" && val.trim() === "");
-
-      if (isEmpty) {
-        setErrorMsg(`"${field.label}" is required.`);
-        setStatus("error");
-        return;
-      }
-    }
+    if (!validateFields(form.form_fields)) return;
 
     setStatus("loading");
     setErrorMsg("");
@@ -198,28 +261,58 @@ export default function PublicFormClient({ form }: PublicFormClientProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <div className="mb-2 flex justify-between text-xs text-slate-500">
-          <span>Application progress</span>
-          <span>{progress}%</span>
-        </div>
+      {isMultiStep ? (
+        <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-5 backdrop-blur-sm sm:p-6">
+          <div className="mb-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-400">
+              Step {step + 1} of {steps.length}
+            </p>
 
-        <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-teal-500 transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
+            <h2 className="mt-2 font-display text-xl font-bold text-white">
+              {currentStep.title}
+            </h2>
 
-      {form.form_fields.map((field, index) => (
+            <p className="mt-1 text-sm text-slate-400">
+              Complete this section to continue.
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            {steps.map((stepItem, index) => (
+              <div
+                key={`${stepItem.title}-${index}`}
+                className={`h-1.5 flex-1 rounded-full transition-all ${
+                  index <= step ? "bg-teal-400" : "bg-white/10"
+                }`}
+                title={stepItem.title}
+              />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-5 backdrop-blur-sm sm:p-6">
+          <div className="mb-2 flex justify-between text-xs text-slate-500">
+            <span>Application progress</span>
+            <span>{progress}%</span>
+          </div>
+
+          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-teal-500 transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {visibleFields.map((field) => (
         <Field
           key={field.id}
           field={field}
-          index={index}
+          index={getFieldIndex(field.id)}
           value={values[field.id]}
-          onChange={(value) => handleChange(field.id, value)}
-          onCheckboxChange={(option, checked) =>
+          onChange={(value: FieldValue) => handleChange(field.id, value)}
+          onCheckboxChange={(option: string, checked: boolean) =>
             handleCheckboxChange(field.id, option, checked)
           }
         />
@@ -232,20 +325,33 @@ export default function PublicFormClient({ form }: PublicFormClientProps) {
       )}
 
       <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
-        <button
-          type="submit"
-          disabled={status === "loading"}
-          className="btn-primary w-full justify-center py-3.5 text-base disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {status === "loading" ? (
-            <span className="flex items-center gap-2">
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              Submitting application...
-            </span>
-          ) : (
-            "Submit Application"
-          )}
-        </button>
+        {isMultiStep ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              disabled={step === 0 || status === "loading"}
+              onClick={goBack}
+              className="btn-ghost justify-center px-6 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Back
+            </button>
+
+            {isLastStep ? (
+              <SubmitButton status={status} />
+            ) : (
+              <button
+                type="button"
+                disabled={status === "loading"}
+                onClick={goNext}
+                className="btn-primary justify-center px-6 py-3 text-base disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Continue
+              </button>
+            )}
+          </div>
+        ) : (
+          <SubmitButton status={status} fullWidth />
+        )}
 
         <p className="mt-3 text-center text-xs leading-relaxed text-slate-500">
           By submitting this form, you agree that OMSP may store and review your
@@ -253,6 +359,33 @@ export default function PublicFormClient({ form }: PublicFormClientProps) {
         </p>
       </div>
     </form>
+  );
+}
+
+function SubmitButton({
+  status,
+  fullWidth = false,
+}: {
+  status: Status;
+  fullWidth?: boolean;
+}) {
+  return (
+    <button
+      type="submit"
+      disabled={status === "loading"}
+      className={`btn-primary justify-center py-3 text-base disabled:cursor-not-allowed disabled:opacity-60 ${
+        fullWidth ? "w-full" : "px-6"
+      }`}
+    >
+      {status === "loading" ? (
+        <span className="flex items-center gap-2">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+          Submitting application...
+        </span>
+      ) : (
+        "Submit Application"
+      )}
+    </button>
   );
 }
 
