@@ -11,35 +11,36 @@ export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://omsp.org";
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
 export const PUBLIC_NAV = [
-  { label: "About",         href: "/about" },
-  { label: "Programs",      href: "/programs" },
-  { label: "Events",        href: "/events" },
+  { label: "About", href: "/about" },
+  { label: "Programs", href: "/programs" },
+  { label: "Events", href: "/events" },
   { label: "Opportunities", href: "/opportunities" },
-  { label: "Partners",      href: "/partners" },
-  { label: "Contact",       href: "/contact" },
+  { label: "Partners", href: "/partners" },
+  { label: "Contact", href: "/contact" },
 ] as const;
 
 export const ADMIN_NAV = [
-  { label: "Dashboard",    href: "/admin/dashboard",   icon: "LayoutDashboard" },
-  { label: "Forms",        href: "/admin/forms",        icon: "FileText" },
-  { label: "Submissions",  href: "/admin/submissions",  icon: "Inbox" },
-  { label: "Events",       href: "/admin/events",       icon: "Calendar" },
-  { label: "Broadcasts",   href: "/admin/broadcasts",   icon: "PenLine" },
-  { label: "Contacts",     href: "/admin/contacts",     icon: "Mail" },
-  { label: "Sponsors",     href: "/admin/sponsors",     icon: "Building2" },
+  { label: "Dashboard", href: "/admin/dashboard", icon: "LayoutDashboard" },
+  { label: "Forms", href: "/admin/forms", icon: "FileText" },
+  { label: "Submissions", href: "/admin/submissions", icon: "Inbox" },
+  { label: "Events", href: "/admin/events", icon: "Calendar" },
+  { label: "Gallery", href: "/admin/gallery", icon: "Image" },
+  { label: "Broadcasts", href: "/admin/broadcasts", icon: "PenLine" },
+  { label: "Contacts", href: "/admin/contacts", icon: "Mail" },
+  { label: "Sponsors", href: "/admin/sponsors", icon: "Building2" },
 ] as const;
 
 // ─── Form field types (for UI labels) ─────────────────────────────────────────
 
 export const FIELD_TYPE_LABELS: Record<string, string> = {
-  text:     "Short Text",
+  text: "Short Text",
   textarea: "Long Text",
-  email:    "Email Address",
-  phone:    "Phone Number",
-  select:   "Dropdown (Select)",
-  radio:    "Multiple Choice (Radio)",
+  email: "Email Address",
+  phone: "Phone Number",
+  select: "Dropdown (Select)",
+  radio: "Multiple Choice (Radio)",
   checkbox: "Checkboxes",
-  date:     "Date Picker",
+  date: "Date Picker",
   file: "File Upload",
 };
 
@@ -47,10 +48,10 @@ export const FIELD_TYPE_LABELS: Record<string, string> = {
 
 export const SPONSOR_TIERS = [
   { value: "platinum", label: "Platinum", color: "sky" },
-  { value: "gold",     label: "Gold",     color: "yellow" },
-  { value: "silver",   label: "Silver",   color: "slate" },
-  { value: "bronze",   label: "Bronze",   color: "orange" },
-  { value: "partner",  label: "Partner",  color: "teal" },
+  { value: "gold", label: "Gold", color: "yellow" },
+  { value: "silver", label: "Silver", color: "slate" },
+  { value: "bronze", label: "Bronze", color: "orange" },
+  { value: "partner", label: "Partner", color: "teal" },
 ] as const;
 
 // ─── Roadmap milestones (from PDF) ────────────────────────────────────────────

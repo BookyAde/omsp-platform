@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase";
 import { requireAdmin, badRequest, serverError } from "@/lib/server-utils";
 import { sendEmail } from "@/lib/email";
+import { buildEmailTemplate } from "@/lib/email-template";
 
 type AudienceType = "users" | "form_applicants";
 type UserAudience = "all" | "promotional" | "admins";
@@ -15,33 +16,6 @@ const validSubmissionStatuses: SubmissionStatus[] = [
   "approved",
   "rejected",
 ];
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function buildBroadcastHtml(subject: string, message: string) {
-  const safeSubject = escapeHtml(subject);
-  const safeMessage = escapeHtml(message).replace(/\n/g, "<br />");
-
-  return `
-    <div style="font-family: Arial, sans-serif; line-height: 1.7; color: #222;">
-      <h2>${safeSubject}</h2>
-
-      <p>${safeMessage}</p>
-
-      <p style="margin-top: 28px;">
-        Warm regards,<br />
-        <strong>OMSP Team</strong>
-      </p>
-    </div>
-  `;
-}
 
 function extractEmailFromSubmissionValues(values: any[]) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -93,7 +67,8 @@ export async function POST(req: NextRequest) {
 
   const selectedAudienceType: AudienceType = audience_type ?? "users";
   const selectedUserAudience: UserAudience = user_audience ?? "all";
-  const selectedSubmissionStatus: SubmissionStatus = submission_status ?? "all";
+  const selectedSubmissionStatus: SubmissionStatus =
+    submission_status ?? "all";
 
   if (!subject?.trim() || !message?.trim()) {
     return badRequest("Subject and message are required.");
@@ -125,6 +100,7 @@ export async function POST(req: NextRequest) {
 
   let recipientEmails: string[] = [];
 
+  // ─── USERS ─────────────────────────────────────────────
   if (selectedAudienceType === "users") {
     let query = admin
       .from("profiles")
@@ -148,6 +124,7 @@ export async function POST(req: NextRequest) {
       .filter((email): email is string => Boolean(email));
   }
 
+  // ─── FORM APPLICANTS ───────────────────────────────────
   if (selectedAudienceType === "form_applicants") {
     let query = admin
       .from("form_submissions")
@@ -188,7 +165,12 @@ export async function POST(req: NextRequest) {
 
   const cleanSubject = subject.trim();
   const cleanMessage = message.trim();
-  const html = buildBroadcastHtml(cleanSubject, cleanMessage);
+
+  // ✅ USE PROPER TEMPLATE
+  const html = buildEmailTemplate({
+    subject: cleanSubject,
+    content: cleanMessage.replace(/\n/g, "<br />"),
+  });
 
   for (const email of uniqueEmails) {
     try {

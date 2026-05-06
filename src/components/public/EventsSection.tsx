@@ -8,7 +8,15 @@ async function getUpcomingEvents(): Promise<Event[]> {
     const supabase = await createServerSupabaseClient();
     const { data } = await supabase
       .from("events")
-      .select("*")
+      .select(`
+        id,
+        title,
+        description,
+        event_date,
+        location_type,
+        is_featured,
+        registration_form_id
+      `)
       .gte("event_date", new Date().toISOString())
       .order("event_date", { ascending: true })
       .limit(3);

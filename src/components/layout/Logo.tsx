@@ -32,7 +32,6 @@ export default function Logo({
 
   const content = (
     <span className={cn("inline-flex items-center gap-3", className)}>
-      {/* Logo Icon */}
       <Image
         src="/images/omsp-mark.png"
         alt="OMSP Logo"
@@ -42,8 +41,7 @@ export default function Logo({
         className={cn(styles.icon, "object-contain")}
       />
 
-      {/* Text beside logo */}
-      <span className="flex flex-col leading-tight">
+      <span className="hidden sm:flex flex-col leading-tight">
         <span className={cn("font-bold text-white tracking-wide", styles.title)}>
           OMSP
         </span>

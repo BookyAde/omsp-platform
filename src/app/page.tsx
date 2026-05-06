@@ -9,6 +9,7 @@ import RoadmapSection from "@/components/public/RoadmapSection";
 import EventsSection from "@/components/public/EventsSection";
 import OpportunitiesSection from "@/components/public/OpportunitiesSection";
 import SponsorsSection from "@/components/public/SponsorsSection";
+import GalleryUpdates from "@/components/public/GalleryUpdates";
 
 export const metadata: Metadata = {
   title: "OMSP — Organization of Marine Science Professionals",
@@ -16,7 +17,6 @@ export const metadata: Metadata = {
     "Building a strong network of marine science students and professionals, engaged in ocean sustainability and community impact.",
 };
 
-// Revalidate homepage data every 10 minutes
 export const revalidate = 600;
 
 function SectionLoader() {
@@ -33,15 +33,24 @@ export default function HomePage() {
       <Header />
       <main>
         <HeroSection />
+
+        <Suspense fallback={<SectionLoader />}>
+          <GalleryUpdates />
+        </Suspense>
+
         <VisionSection />
         <PillarsSection />
-        <RoadmapSection />
+
         <Suspense fallback={<SectionLoader />}>
           <EventsSection />
         </Suspense>
+
         <Suspense fallback={<SectionLoader />}>
           <OpportunitiesSection />
         </Suspense>
+
+        <RoadmapSection />
+
         <Suspense fallback={<SectionLoader />}>
           <SponsorsSection />
         </Suspense>
