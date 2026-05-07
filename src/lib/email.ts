@@ -1,3 +1,5 @@
+import { buildEmailTemplate } from "@/lib/email-template";
+
 type EmailSenderType = "admin" | "team" | "support";
 
 type SendEmailParams = {
@@ -8,6 +10,7 @@ type SendEmailParams = {
   fromEmail?: string;
   fromName?: string;
   replyTo?: string;
+  useTemplate?: boolean;
 };
 
 const senderProfiles: Record<EmailSenderType, { email: string; name: string }> = {
@@ -33,8 +36,13 @@ export async function sendEmail({
   fromEmail,
   fromName,
   replyTo,
+  useTemplate = true,
 }: SendEmailParams) {
   const apiKey = process.env.BREVO_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("Missing BREVO_API_KEY in .env.local");
+  }
 
   const selectedSender = senderProfiles[senderType];
 
@@ -44,13 +52,23 @@ export async function sendEmail({
   const senderName =
     fromName || selectedSender.name || process.env.EMAIL_FROM_NAME || "OMSP";
 
-  if (!apiKey) {
-    throw new Error("Missing BREVO_API_KEY in .env.local");
+  const recipients = Array.isArray(to)
+    ? to.map((email) => ({ email: email.trim() })).filter((item) => item.email)
+    : to
+        .split(",")
+        .map((email) => ({ email: email.trim() }))
+        .filter((item) => item.email);
+
+  if (recipients.length === 0) {
+    throw new Error("No valid recipient email provided");
   }
 
-  const recipients = Array.isArray(to)
-    ? to.map((email) => ({ email }))
-    : to.split(",").map((email) => ({ email: email.trim() }));
+  const htmlContent = useTemplate
+    ? buildEmailTemplate({
+        subject,
+        content: html,
+      })
+    : html;
 
   const response = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
@@ -65,7 +83,7 @@ export async function sendEmail({
       },
       to: recipients,
       subject,
-      htmlContent: html,
+      htmlContent,
       ...(replyTo
         ? {
             replyTo: {

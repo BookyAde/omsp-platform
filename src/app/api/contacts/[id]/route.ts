@@ -15,20 +15,46 @@ export async function PATCH(
   if (authError) return authError;
 
   let body: unknown;
-  try { body = await req.json(); }
-  catch { return badRequest("Invalid JSON body."); }
+
+  try {
+    body = await req.json();
+  } catch {
+    return badRequest("Invalid JSON body.");
+  }
 
   const parsed = updateSchema.safeParse(body);
+
   if (!parsed.success) {
     return badRequest("Invalid status value. Must be unread, read, or archived.");
   }
 
   const admin = createAdminClient();
+
   const { error } = await admin
     .from("contacts")
     .update({ status: parsed.data.status })
     .eq("id", params.id);
 
   if (error) return serverError(error.message);
+
+  return NextResponse.json({ success: true });
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
+  const admin = createAdminClient();
+
+  const { error } = await admin
+    .from("contacts")
+    .delete()
+    .eq("id", params.id);
+
+  if (error) return serverError(error.message);
+
   return NextResponse.json({ success: true });
 }

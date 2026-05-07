@@ -2,71 +2,64 @@ import { ROADMAP_MILESTONES } from "@/lib/constants";
 
 export default function RoadmapSection() {
   return (
-    <section className="py-24 bg-ocean-950 relative overflow-hidden">
-
-      {/* Background accent */}
+    <section className="relative overflow-hidden bg-ocean-950 py-24 md:py-28">
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
-                        w-[800px] h-[400px] rounded-full
-                        bg-teal-500/4 blur-[100px]" />
+        <div className="absolute left-1/2 top-1/2 h-[400px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-teal-400/5 blur-[120px]" />
       </div>
 
       <div className="section-container relative z-10">
-
-        {/* Heading */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
+        <div className="mx-auto mb-16 max-w-2xl text-center">
           <span className="section-eyebrow">Year 1 Plan</span>
-          <h2 className="font-display text-4xl lg:text-5xl font-bold text-white leading-tight">
-            The OMSP Roadmap
+
+          <h2 className="mt-4 font-display text-3xl font-semibold leading-tight tracking-tight text-white md:text-4xl lg:text-5xl">
+            The OMSP roadmap
           </h2>
-          <p className="mt-5 text-slate-400 leading-relaxed">
-            A structured twelve-month journey from community launch to annual conference —
-            with clear milestones at every stage.
+
+          <p className="mt-5 text-base leading-8 text-slate-300/80">
+            A structured twelve-month journey from community launch to annual
+            conference, with clear milestones for learning, engagement, and
+            professional growth.
           </p>
         </div>
 
-        {/* Timeline — horizontal on large, vertical on mobile */}
         <div className="relative">
-
-          {/* Connector line — desktop */}
           <div
-            className="hidden lg:block absolute top-[52px] left-0 right-0 h-px bg-gradient-to-r
-                        from-transparent via-ocean-700 to-transparent"
+            className="absolute left-0 right-0 top-[52px] hidden h-px bg-gradient-to-r from-transparent via-ocean-700/60 to-transparent lg:block"
             aria-hidden="true"
           />
 
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-4">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 lg:gap-4">
             {ROADMAP_MILESTONES.map((milestone, idx) => (
-              <div key={milestone.month} className="relative group">
-
-                {/* Mobile connector — vertical */}
+              <div key={milestone.month} className="group relative">
                 {idx < ROADMAP_MILESTONES.length - 1 && (
-                  <div className="lg:hidden absolute left-5 top-10 w-px h-full bg-ocean-700/50" aria-hidden="true" />
+                  <div
+                    className="absolute left-5 top-10 h-full w-px bg-ocean-700/40 lg:hidden"
+                    aria-hidden="true"
+                  />
                 )}
 
-                {/* Dot */}
-                <div className="relative z-10 w-10 h-10 rounded-full
-                                bg-ocean-800 border-2 border-ocean-600
-                                group-hover:border-teal-500 group-hover:shadow-teal-glow
-                                transition-all duration-300 flex items-center justify-center
-                                mx-auto lg:mx-0 mb-5">
-                  <span className="font-mono text-[10px] text-teal-400 font-bold">
+                <div className="relative z-10 mx-auto mb-5 flex h-10 w-10 items-center justify-center rounded-full border border-ocean-600/70 bg-ocean-800 transition-all duration-300 group-hover:border-teal-400/50 group-hover:shadow-teal-glow lg:mx-0">
+                  <span className="font-mono text-[10px] font-medium text-teal-300">
                     {String(idx + 1).padStart(2, "0")}
                   </span>
                 </div>
 
-                {/* Card */}
-                <div className="glass-card p-5 group-hover:border-teal-500/25 transition-colors duration-200">
-                  <span className="font-mono text-xs text-teal-400 mb-1 block">
+                <div className="glass-card p-5 transition-colors duration-200 group-hover:border-teal-400/20">
+                  <span className="mb-2 block font-mono text-xs text-teal-300/90">
                     {milestone.month}
                   </span>
-                  <h3 className="font-display text-base font-bold text-white mb-3">
+
+                  <h3 className="font-display text-base font-semibold tracking-tight text-white">
                     {milestone.title}
                   </h3>
-                  <ul className="space-y-2">
+
+                  <ul className="mt-4 space-y-2.5">
                     {milestone.items.map((item) => (
-                      <li key={item} className="flex items-start gap-2 text-slate-400 text-xs leading-relaxed">
-                        <span className="w-1 h-1 rounded-full bg-teal-500 mt-1.5 flex-shrink-0" />
+                      <li
+                        key={item}
+                        className="flex items-start gap-2 text-xs leading-6 text-slate-300/75"
+                      >
+                        <span className="mt-2 h-1 w-1 flex-shrink-0 rounded-full bg-teal-300/80" />
                         {item}
                       </li>
                     ))}
@@ -77,23 +70,27 @@ export default function RoadmapSection() {
           </div>
         </div>
 
-        {/* Year 2+ teaser */}
-        <div className="mt-12 glass-card p-6 lg:p-8 border-dashed border-ocean-600/50">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="glass-card mt-12 border-dashed border-ocean-600/40 p-6 md:p-8">
+          <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
             <div>
-              <span className="font-mono text-xs text-slate-500 block mb-1">Year 2 and Beyond</span>
-              <h3 className="font-display text-xl font-bold text-white">Expanding Our Reach</h3>
-              <p className="text-slate-400 text-sm mt-2">
-                Campus representatives, secondary school outreach, coastal field trips,
-                internship guidance, and a growing network of early-career speakers.
+              <span className="mb-2 block font-mono text-xs text-slate-500">
+                Year 2 and Beyond
+              </span>
+
+              <h3 className="font-display text-xl font-semibold tracking-tight text-white">
+                Expanding our reach
+              </h3>
+
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300/80">
+                Campus representatives, secondary school outreach, coastal field
+                trips, internship guidance, and a growing network of
+                early-career speakers.
               </p>
             </div>
-            <div className="flex-shrink-0">
-              <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg
-                               border border-ocean-600/60 text-slate-400 text-sm font-medium">
-                Coming Soon
-              </span>
-            </div>
+
+            <span className="inline-flex flex-shrink-0 items-center rounded-xl border border-ocean-600/50 px-5 py-2.5 text-sm font-medium text-slate-400">
+              Coming soon
+            </span>
           </div>
         </div>
       </div>

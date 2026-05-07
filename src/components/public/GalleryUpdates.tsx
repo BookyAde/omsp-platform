@@ -73,26 +73,26 @@ export default async function GalleryUpdates() {
           ))}
         </div>
 
-        <div className="space-y-3 p-6">
+        <div className="space-y-4 p-6 md:p-7">
           <div className="flex flex-wrap items-center gap-2">
             {item.is_featured && (
-              <span className="rounded-full bg-teal-400 px-3 py-1 text-xs font-bold uppercase tracking-wide text-ocean-950">
+              <span className="rounded-full bg-teal-400/15 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-teal-200">
                 Featured
               </span>
             )}
 
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-400">
+            <span className="text-[11px] font-medium uppercase tracking-[0.22em] text-teal-300/85">
               {item.category.replace("_", " ")}
             </span>
           </div>
 
-          <h3 className="font-display text-2xl font-semibold text-white">
+          <h3 className="font-display text-2xl font-semibold tracking-tight text-white">
             {item.title}
           </h3>
 
           {item.description && (
             <details className="group">
-              <summary className="cursor-pointer list-none text-sm leading-6 text-slate-400">
+              <summary className="cursor-pointer list-none text-sm leading-7 text-slate-300/80">
                 <span className="group-open:hidden">
                   {item.description.length > 150
                     ? `${item.description.slice(0, 150)}... `
@@ -124,15 +124,15 @@ export default async function GalleryUpdates() {
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-12 max-w-3xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-teal-400">
+          <p className="text-sm font-medium uppercase tracking-[0.22em] text-teal-300/85">
             OMSP Highlights
           </p>
 
-          <h2 className="mt-3 font-display text-4xl font-bold text-white sm:text-5xl">
+          <h2 className="mt-4 font-display text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl">
             Our Work in Pictures
           </h2>
 
-          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-400">
+          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300/80">
             See moments from OMSP conferences, field activities, trainings,
             academic engagements and community impact projects.
           </p>
@@ -140,7 +140,7 @@ export default async function GalleryUpdates() {
 
         {featuredItems.length > 0 && (
           <div className="mb-12 space-y-6">
-            <h3 className="font-display text-2xl font-semibold text-white">
+            <h3 className="font-display text-2xl font-semibold tracking-tight text-white">
               Featured Updates
             </h3>
 

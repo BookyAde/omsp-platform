@@ -31,30 +31,34 @@ export default function HomePage() {
   return (
     <>
       <Header />
-      <main>
+
+      <main className="relative overflow-hidden">
         <HeroSection />
 
-        <Suspense fallback={<SectionLoader />}>
-          <GalleryUpdates />
-        </Suspense>
+        <div className="space-y-4">
+          <Suspense fallback={<SectionLoader />}>
+            <GalleryUpdates />
+          </Suspense>
 
-        <VisionSection />
-        <PillarsSection />
+          <VisionSection />
+          <PillarsSection />
 
-        <Suspense fallback={<SectionLoader />}>
-          <EventsSection />
-        </Suspense>
+          <Suspense fallback={<SectionLoader />}>
+            <EventsSection />
+          </Suspense>
 
-        <Suspense fallback={<SectionLoader />}>
-          <OpportunitiesSection />
-        </Suspense>
+          <Suspense fallback={<SectionLoader />}>
+            <OpportunitiesSection />
+          </Suspense>
 
-        <RoadmapSection />
+          <RoadmapSection />
 
-        <Suspense fallback={<SectionLoader />}>
-          <SponsorsSection />
-        </Suspense>
+          <Suspense fallback={<SectionLoader />}>
+            <SponsorsSection />
+          </Suspense>
+        </div>
       </main>
+
       <Footer />
     </>
   );

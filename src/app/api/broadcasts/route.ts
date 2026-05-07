@@ -2,14 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase";
 import { requireAdmin, badRequest, serverError } from "@/lib/server-utils";
 import { sendEmail } from "@/lib/email";
-import { buildEmailTemplate } from "@/lib/email-template";
 
-type AudienceType = "users" | "form_applicants";
+type AudienceType =
+  | "users"
+  | "form_applicants"
+  | "selected_users"
+  | "manual_emails";
+
 type UserAudience = "all" | "promotional" | "admins";
 type SubmissionStatus = "all" | "pending" | "approved" | "rejected";
+type SenderType = "admin" | "team" | "support";
 
-const validAudienceTypes: AudienceType[] = ["users", "form_applicants"];
+const validAudienceTypes: AudienceType[] = [
+  "users",
+  "form_applicants",
+  "selected_users",
+  "manual_emails",
+];
+
 const validUserAudiences: UserAudience[] = ["all", "promotional", "admins"];
+
 const validSubmissionStatuses: SubmissionStatus[] = [
   "all",
   "pending",
@@ -17,9 +29,11 @@ const validSubmissionStatuses: SubmissionStatus[] = [
   "rejected",
 ];
 
-function extractEmailFromSubmissionValues(values: any[]) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const validSenderTypes: SenderType[] = ["admin", "team", "support"];
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function extractEmailFromSubmissionValues(values: any[]) {
   const emailValue = values.find((item) => {
     const value = String(item.value ?? "").trim();
     const label = String(item.field?.label ?? "").toLowerCase();
@@ -35,6 +49,16 @@ function extractEmailFromSubmissionValues(values: any[]) {
   });
 
   return emailValue ? String(emailValue.value).trim().toLowerCase() : null;
+}
+
+function cleanEmails(emails: string[]) {
+  return Array.from(
+    new Set(
+      emails
+        .map((email) => String(email).trim().toLowerCase())
+        .filter((email) => emailRegex.test(email))
+    )
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -56,6 +80,9 @@ export async function POST(req: NextRequest) {
     user_audience,
     form_id,
     submission_status,
+    selected_user_ids,
+    manual_emails,
+    sender_type,
   } = body as {
     subject?: string;
     message?: string;
@@ -63,12 +90,15 @@ export async function POST(req: NextRequest) {
     user_audience?: UserAudience;
     form_id?: string;
     submission_status?: SubmissionStatus;
+    selected_user_ids?: string[];
+    manual_emails?: string[];
+    sender_type?: SenderType;
   };
 
   const selectedAudienceType: AudienceType = audience_type ?? "users";
   const selectedUserAudience: UserAudience = user_audience ?? "all";
-  const selectedSubmissionStatus: SubmissionStatus =
-    submission_status ?? "all";
+  const selectedSubmissionStatus: SubmissionStatus = submission_status ?? "all";
+  const selectedSenderType: SenderType = sender_type ?? "team";
 
   if (!subject?.trim() || !message?.trim()) {
     return badRequest("Subject and message are required.");
@@ -76,6 +106,10 @@ export async function POST(req: NextRequest) {
 
   if (!validAudienceTypes.includes(selectedAudienceType)) {
     return badRequest("Invalid audience type selected.");
+  }
+
+  if (!validSenderTypes.includes(selectedSenderType)) {
+    return badRequest("Invalid sender selected.");
   }
 
   if (
@@ -96,11 +130,23 @@ export async function POST(req: NextRequest) {
     return badRequest("Please select a form.");
   }
 
-  const admin = createAdminClient();
+  if (
+    selectedAudienceType === "selected_users" &&
+    (!selected_user_ids || selected_user_ids.length === 0)
+  ) {
+    return badRequest("Please select at least one user.");
+  }
 
+  if (
+    selectedAudienceType === "manual_emails" &&
+    (!manual_emails || manual_emails.length === 0)
+  ) {
+    return badRequest("Please enter at least one email address.");
+  }
+
+  const admin = createAdminClient();
   let recipientEmails: string[] = [];
 
-  // ─── USERS ─────────────────────────────────────────────
   if (selectedAudienceType === "users") {
     let query = admin
       .from("profiles")
@@ -124,7 +170,6 @@ export async function POST(req: NextRequest) {
       .filter((email): email is string => Boolean(email));
   }
 
-  // ─── FORM APPLICANTS ───────────────────────────────────
   if (selectedAudienceType === "form_applicants") {
     let query = admin
       .from("form_submissions")
@@ -158,26 +203,44 @@ export async function POST(req: NextRequest) {
       .filter((email): email is string => Boolean(email));
   }
 
-  const uniqueEmails = Array.from(new Set(recipientEmails));
+  if (selectedAudienceType === "selected_users") {
+    const { data: selectedUsers, error } = await admin
+      .from("profiles")
+      .select("email")
+      .in("id", selected_user_ids ?? [])
+      .not("email", "is", null);
+
+    if (error) return serverError(error.message);
+
+    recipientEmails = (selectedUsers ?? [])
+      .map((user) => user.email)
+      .filter((email): email is string => Boolean(email));
+  }
+
+  if (selectedAudienceType === "manual_emails") {
+    recipientEmails = manual_emails ?? [];
+  }
+
+  const uniqueEmails = cleanEmails(recipientEmails);
+
+  if (uniqueEmails.length === 0) {
+    return badRequest("No valid recipient email address was found.");
+  }
 
   let sentCount = 0;
   let failedCount = 0;
 
   const cleanSubject = subject.trim();
   const cleanMessage = message.trim();
-
-  // ✅ USE PROPER TEMPLATE
-  const html = buildEmailTemplate({
-    subject: cleanSubject,
-    content: cleanMessage.replace(/\n/g, "<br />"),
-  });
+  const emailBody = cleanMessage.replace(/\n/g, "<br />");
 
   for (const email of uniqueEmails) {
     try {
       await sendEmail({
         to: email,
         subject: cleanSubject,
-        html,
+        html: emailBody,
+        senderType: selectedSenderType,
       });
 
       sentCount++;
@@ -189,7 +252,11 @@ export async function POST(req: NextRequest) {
   const audienceLabel =
     selectedAudienceType === "users"
       ? selectedUserAudience
-      : `form:${form_id}:${selectedSubmissionStatus}`;
+      : selectedAudienceType === "form_applicants"
+        ? `form:${form_id}:${selectedSubmissionStatus}`
+        : selectedAudienceType === "selected_users"
+          ? `selected_users:${uniqueEmails.length}`
+          : `manual_emails:${uniqueEmails.length}`;
 
   const { error: logErr } = await admin.from("email_broadcasts").insert({
     subject: cleanSubject,
@@ -197,6 +264,7 @@ export async function POST(req: NextRequest) {
     audience: audienceLabel,
     sent_count: sentCount,
     failed_count: failedCount,
+    sender_type: selectedSenderType,
   });
 
   if (logErr) return serverError(logErr.message);
@@ -207,6 +275,7 @@ export async function POST(req: NextRequest) {
     user_audience: selectedUserAudience,
     form_id: form_id ?? null,
     submission_status: selectedSubmissionStatus,
+    sender_type: selectedSenderType,
     total_recipients: uniqueEmails.length,
     sent_count: sentCount,
     failed_count: failedCount,

@@ -6,6 +6,11 @@ import Logo from "./Logo";
 import { ADMIN_NAV } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
+interface AdminSidebarProps {
+  open?: boolean;
+  onClose?: () => void;
+}
+
 const ICONS: Record<string, React.ReactNode> = {
   LayoutDashboard: (
     <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -54,63 +59,116 @@ const ICONS: Record<string, React.ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
     </svg>
   ),
+
+  Users: (
+    <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a8.94 8.94 0 0 0 3.75.78A8.96 8.96 0 0 0 12 10.5a8.96 8.96 0 0 0-9.75 9 8.94 8.94 0 0 0 3.75-.78m12 0a8.966 8.966 0 0 1-12 0m12 0v-.75A2.25 2.25 0 0 0 15.75 15h-7.5A2.25 2.25 0 0 0 6 17.25v.75m12 0a8.96 8.96 0 0 0-12 0M15 7.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+    </svg>
+  ),
 };
 
-export default function AdminSidebar() {
+export default function AdminSidebar({
+  open = false,
+  onClose,
+}: AdminSidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden lg:flex flex-col fixed left-0 top-0 bottom-0 w-64 bg-ocean-900 border-r border-ocean-800/60 z-40">
-      <div className="flex items-center h-16 px-6 border-b border-ocean-800/60">
-        <Logo size="sm" />
-        <span className="ml-auto font-mono text-[10px] text-ocean-600 bg-ocean-800 px-2 py-0.5 rounded">
-          Admin
-        </span>
-      </div>
+    <>
+      {/* Mobile overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={onClose}
+        />
+      )}
 
-      <nav className="flex-1 py-6 px-3 space-y-0.5 overflow-y-auto" aria-label="Admin navigation">
-        {ADMIN_NAV.map((item) => {
-          const active =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+      <aside
+        className={cn(
+          "fixed left-0 top-0 bottom-0 z-50 flex w-64 flex-col",
+          "border-r border-ocean-800/60 bg-ocean-900",
+          "transition-transform duration-300 ease-in-out",
+          open ? "translate-x-0" : "-translate-x-full",
+          "lg:translate-x-0"
+        )}
+      >
+        <div className="flex h-16 items-center border-b border-ocean-800/60 px-6">
+          <Logo size="sm" />
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
-                active
-                  ? "bg-teal-500/15 text-teal-400 border border-teal-500/20"
-                  : "text-slate-400 hover:text-white hover:bg-ocean-800/60 border border-transparent"
-              )}
+          <div className="ml-auto flex items-center gap-2">
+            <span className="rounded bg-ocean-800 px-2 py-0.5 font-mono text-[10px] text-ocean-600">
+              Admin
+            </span>
+
+            <button
+              onClick={onClose}
+              className="text-slate-500 hover:text-white lg:hidden"
             >
-              <span
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <nav
+          className="flex-1 space-y-0.5 overflow-y-auto px-3 py-6"
+          aria-label="Admin navigation"
+        >
+          {ADMIN_NAV.map((item) => {
+            const active =
+              pathname === item.href ||
+              pathname.startsWith(item.href + "/");
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
                 className={cn(
-                  "flex-shrink-0",
-                  active ? "text-teal-400" : "text-slate-500"
+                  "flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all duration-150",
+                  active
+                    ? "border-teal-500/20 bg-teal-500/15 text-teal-400"
+                    : "border-transparent text-slate-400 hover:bg-ocean-800/60 hover:text-white"
                 )}
               >
-                {ICONS[item.icon]}
-              </span>
+                <span
+                  className={cn(
+                    "flex-shrink-0",
+                    active ? "text-teal-400" : "text-slate-500"
+                  )}
+                >
+                  {ICONS[item.icon]}
+                </span>
 
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
 
-      <div className="p-4 border-t border-ocean-800/60">
-        <Link
-          href="/"
-          target="_blank"
-          className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-ocean-800/40 transition-colors text-sm"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-          </svg>
-          View Public Site
-        </Link>
-      </div>
-    </aside>
+        <div className="border-t border-ocean-800/60 p-4">
+          <Link
+            href="/"
+            target="_blank"
+            className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-500 transition-colors hover:bg-ocean-800/40 hover:text-slate-300"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.8}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+              />
+            </svg>
+
+            View Public Site
+          </Link>
+        </div>
+      </aside>
+    </>
   );
 }
