@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import {
   Playfair_Display,
   DM_Sans,
@@ -14,7 +15,6 @@ import {
 } from "@/lib/constants";
 
 import { ToastProvider } from "@/components/ui/Toast";
-
 import PublicActivityTracker from "@/components/monitoring/PublicActivityTracker";
 
 const playfair = Playfair_Display({
@@ -70,7 +70,9 @@ export default function RootLayout({
     >
       <body className="bg-ocean-950 text-white font-body antialiased">
         <ToastProvider>
-          <PublicActivityTracker />
+          <Suspense fallback={null}>
+            <PublicActivityTracker />
+          </Suspense>
 
           {children}
         </ToastProvider>
