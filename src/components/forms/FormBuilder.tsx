@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import QRCode from "qrcode";
 import { slugify, generateId } from "@/lib/utils";
 import { FIELD_TYPE_LABELS } from "@/lib/constants";
 import type { FieldType, FormStatus, FormFieldDraft } from "@/types";
@@ -17,6 +18,7 @@ interface FormBuilderProps {
     status: FormStatus;
     visibility: "public" | "private";
     requires_review: boolean;
+    generate_qr?: boolean;
     form_mode?: "single_page" | "multi_step";
     deadline: string | null;
     fields: FormFieldDraft[];
@@ -35,6 +37,7 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
   const [status, setStatus] = useState<FormStatus>("draft");
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [requiresReview, setRequiresReview] = useState(false);
+  const [generateQr, setGenerateQr] = useState(false);
   const [formMode, setFormMode] = useState<"single_page" | "multi_step">("single_page");
   const [deadline, setDeadline] = useState("");
   const [slugEdited, setSlugEdited] = useState(isEdit);
@@ -53,6 +56,7 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
     setStatus(initialData.status ?? "draft");
     setVisibility(initialData.visibility ?? "public");
     setRequiresReview(initialData.requires_review ?? false);
+    setGenerateQr(initialData.generate_qr ?? false);
     setFormMode(initialData.form_mode ?? "single_page");
     setDeadline(initialData.deadline ? initialData.deadline.slice(0, 16) : "");
 
@@ -159,6 +163,7 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
         status: saveStatus ?? status,
         visibility,
         requires_review: requiresReview,
+        generate_qr: generateQr,
         form_mode: formMode,
         deadline: deadline || null,
         fields: fields.map((field, index) => ({
@@ -402,6 +407,22 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
             </div>
 
             <div>
+              <label className="form-label">QR Code</label>
+              <select
+                className="form-input"
+                value={generateQr ? "yes" : "no"}
+                onChange={(e) => setGenerateQr(e.target.value === "yes")}
+              >
+                <option value="no">No QR code</option>
+                <option value="yes">Generate QR code</option>
+              </select>
+
+              <p className="text-slate-600 text-xs mt-1.5">
+                Generate a QR code that links directly to this public form.
+              </p>
+            </div>
+
+            <div>
               <label className="form-label">Form Layout</label>
 
               <div className="flex gap-3">
@@ -512,6 +533,20 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
             )}
           </div>
 
+          {generateQr && slug && (
+            <div className="glass-card p-6">
+              <h3 className="font-display font-bold text-white mb-3">
+                Form QR Code
+              </h3>
+
+              <p className="text-slate-400 text-sm mb-4">
+                This QR code opens the public form link.
+              </p>
+
+              <QRCodePreview slug={slug} />
+            </div>
+          )}
+
           {isEdit && (
             <div className="glass-card p-6 border-red-500/20">
               <h3 className="font-display font-bold text-red-400 mb-3">
@@ -535,6 +570,40 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function QRCodePreview({ slug }: { slug: string }) {
+  const [qrCode, setQrCode] = useState("");
+
+  useEffect(() => {
+    async function makeQr() {
+      const url = `${window.location.origin}/f/${slug}`;
+      const qr = await QRCode.toDataURL(url);
+      setQrCode(qr);
+    }
+
+    makeQr();
+  }, [slug]);
+
+  if (!qrCode) return null;
+
+  return (
+    <div>
+      <img
+        src={qrCode}
+        alt="Form QR Code"
+        className="w-52 h-52 rounded-xl border border-ocean-700 bg-white p-2"
+      />
+
+      <a
+        href={qrCode}
+        download={`${slug}-form-qr.png`}
+        className="btn-primary inline-block mt-4 px-5 py-2"
+      >
+        Download QR
+      </a>
     </div>
   );
 }

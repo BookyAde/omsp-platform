@@ -18,14 +18,45 @@ export type ContactInput = z.infer<typeof contactSchema>;
 // ─── Event create/edit ────────────────────────────────────────────────────────
 
 export const eventSchema = z.object({
-  title: z.string().min(3, "Title is required").max(200),
-  description: z.string().max(5000).optional().nullable(),
-  event_date: z.string().min(1, "Event date is required"),
-  end_date: z.string().optional().nullable(),
-  location_type: z.enum(["virtual", "physical", "hybrid"]),
-  location_detail: z.string().max(500).optional().nullable(),
-  registration_form_id: z.string().uuid().optional().nullable(),
+  title: z.string().min(3),
+  description: z.string().min(10),
+
+  event_date: z.string(),
+
+  start_time: z.string().optional(),
+  end_time: z.string().optional(),
+
+  location: z.string().optional(),
+
+  slug: z.string().optional(),
+
+  cover_image_url: z.string().optional(),
+
+  attendance_type: z.enum([
+    "physical",
+    "virtual",
+    "hybrid",
+  ]).default("physical"),
+
+  status: z.enum([
+    "draft",
+    "published",
+    "completed",
+    "cancelled",
+  ]).default("draft"),
+
+  visibility: z.enum([
+    "public",
+    "private",
+  ]).default("public"),
+
+  capacity: z.coerce.number().nullable().optional(),
+
+  generate_qr: z.boolean().default(false),
+
   is_featured: z.boolean().default(false),
+
+  registration_form_id: z.string().uuid().nullable().optional(),
 });
 
 export type EventInput = z.infer<typeof eventSchema>;
@@ -88,6 +119,7 @@ export const formSchema = z.object({
   fields: z.array(formFieldSchema).max(100).optional().default([]),
   visibility: z.enum(["public", "private"]).default("public"),
   requires_review: z.boolean().optional().default(false),
+  generate_qr: z.boolean().optional().default(false),
 
   // Public form display mode
   form_mode: z.enum(["single_page", "multi_step"]).optional().default("single_page"),

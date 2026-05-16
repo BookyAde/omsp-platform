@@ -1,180 +1,577 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createBrowserClient } from "@/lib/supabase";
+import QRCode from "qrcode";
 import type { Event } from "@/types";
 
 interface EventFormProps {
   event?: Partial<Event>;
-  /** Published forms for linking to registration */
-  publishedForms: { id: string; title: string; slug: string }[];
+  publishedForms: {
+    id: string;
+    title: string;
+    slug: string;
+  }[];
 }
 
-export default function EventForm({ event, publishedForms }: EventFormProps) {
-  const router  = useRouter();
-  const isEdit  = !!event?.id;
+function generateSlug(title: string) {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-");
+}
 
-  const [form, setForm] = useState({
-    title:               event?.title ?? "",
-    description:         event?.description ?? "",
-    event_date:          event?.event_date ? event.event_date.slice(0, 16) : "",
-    end_date:            event?.end_date ? event.end_date.slice(0, 16) : "",
-    location_type:       event?.location_type ?? "virtual",
-    location_detail:     event?.location_detail ?? "",
-    registration_form_id: event?.registration_form_id ?? "",
-    is_featured:         event?.is_featured ?? false,
-  });
+export default function EventForm({
+  event,
+  publishedForms,
+}: EventFormProps) {
+  const router = useRouter();
+  const supabase = createBrowserClient();
+
+  const isEdit = !!event?.id;
 
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [error, setError] = useState("");
+
+  const [qrCode, setQrCode] = useState("");
+
+  const [form, setForm] = useState({
+    title: event?.title ?? "",
+
+    description: event?.description ?? "",
+
+    slug: event?.slug ?? "",
+
+    event_date: event?.event_date ?? "",
+
+    start_time: event?.start_time ?? "",
+
+    end_time: event?.end_time ?? "",
+
+    location: event?.location ?? "",
+
+    attendance_type:
+      event?.attendance_type ?? "physical",
+
+    status:
+      event?.status ?? "draft",
+
+    visibility:
+      event?.visibility ?? "public",
+
+    cover_image_url:
+      event?.cover_image_url ?? "",
+
+    generate_qr:
+      event?.generate_qr ?? false,
+
+    is_featured:
+      event?.is_featured ?? false,
+
+    capacity:
+      event?.capacity ?? "",
+
+    registration_form_id:
+      event?.registration_form_id ?? "",
+  });
+
+  useEffect(() => {
+    if (!form.slug && form.title) {
+      setForm((prev) => ({
+        ...prev,
+        slug: generateSlug(form.title),
+      }));
+    }
+  }, [form.title]);
+
+  const publicEventUrl = useMemo(() => {
+    if (!form.slug) return "";
+
+    return `${window.location.origin}/events/${form.slug}`;
+  }, [form.slug]);
+
+  useEffect(() => {
+    async function generateQrCode() {
+      if (!form.generate_qr || !publicEventUrl) {
+        setQrCode("");
+        return;
+      }
+
+      try {
+        const qr = await QRCode.toDataURL(
+          publicEventUrl
+        );
+
+        setQrCode(qr);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    generateQrCode();
+  }, [form.generate_qr, publicEventUrl]);
 
   function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e:
+      | React.ChangeEvent<HTMLInputElement>
+      | React.ChangeEvent<HTMLTextAreaElement>
+      | React.ChangeEvent<HTMLSelectElement>
   ) {
     const { name, value, type } = e.target;
+
     setForm((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+      [name]:
+        type === "checkbox"
+          ? (e.target as HTMLInputElement).checked
+          : value,
     }));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+  async function handleImageUpload(
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = e.target.files?.[0];
 
-    const payload = {
-      ...form,
-      end_date:             form.end_date || null,
-      location_detail:      form.location_detail || null,
-      registration_form_id: form.registration_form_id || null,
-      description:          form.description || null,
-    };
+    if (!file) return;
 
-    const res = await fetch(
-      isEdit ? `/api/events/${event!.id}` : "/api/events",
-      {
-        method:  isEdit ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+    try {
+      setUploadingImage(true);
+
+      const fileExt =
+        file.name.split(".").pop();
+
+      const fileName = `${Date.now()}.${fileExt}`;
+
+      const filePath = `events/${fileName}`;
+
+      const { error } = await supabase.storage
+        .from("event-images")
+        .upload(filePath, file);
+
+      if (error) {
+        throw error;
       }
-    );
 
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error ?? "Failed to save event.");
-      setLoading(false);
-      return;
+      const { data } = supabase.storage
+        .from("event-images")
+        .getPublicUrl(filePath);
+
+      setForm((prev) => ({
+        ...prev,
+        cover_image_url: data.publicUrl,
+      }));
+    } catch (err: any) {
+      console.error(err);
+
+      setError(
+        err.message ||
+          "Failed to upload image."
+      );
+    } finally {
+      setUploadingImage(false);
     }
+  }
 
-    router.push("/admin/events");
-    router.refresh();
+  async function handleSubmit(
+    e: React.FormEvent
+  ) {
+    e.preventDefault();
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const payload = {
+        ...form,
+
+        capacity:
+          form.capacity === ""
+            ? null
+            : Number(form.capacity),
+
+        registration_form_id:
+          form.registration_form_id || null,
+      };
+
+      const res = await fetch(
+        isEdit
+          ? `/api/events/${event!.id}`
+          : "/api/events",
+        {
+          method: isEdit ? "PATCH" : "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json();
+
+        throw new Error(
+          data.error ||
+            "Failed to save event."
+        );
+      }
+
+      router.push("/admin/events");
+      router.refresh();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleDelete() {
-    if (!confirm("Delete this event permanently?")) return;
+    if (
+      !confirm(
+        "Delete this event permanently?"
+      )
+    ) {
+      return;
+    }
+
     setLoading(true);
-    await fetch(`/api/events/${event!.id}`, { method: "DELETE" });
+
+    await fetch(`/api/events/${event!.id}`, {
+      method: "DELETE",
+    });
+
     router.push("/admin/events");
     router.refresh();
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
-
-      {/* Title */}
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-6 max-w-3xl"
+    >
       <div>
-        <label className="form-label" htmlFor="title">Event Title *</label>
-        <input id="title" name="title" type="text" required className="form-input"
-          placeholder="e.g. GIS for Marine Applications Workshop"
-          value={form.title} onChange={handleChange} />
+        <label className="form-label">
+          Event Title
+        </label>
+
+        <input
+          name="title"
+          type="text"
+          required
+          className="form-input"
+          value={form.title}
+          onChange={handleChange}
+        />
       </div>
 
-      {/* Description */}
       <div>
-        <label className="form-label" htmlFor="description">Description</label>
-        <textarea id="description" name="description" rows={4} className="form-input resize-none"
-          placeholder="What will attendees experience?"
-          value={form.description} onChange={handleChange} />
-      </div>
+        <label className="form-label">
+          Event Slug
+        </label>
 
-      {/* Dates */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <div>
-          <label className="form-label" htmlFor="event_date">Start Date & Time *</label>
-          <input id="event_date" name="event_date" type="datetime-local" required className="form-input"
-            value={form.event_date} onChange={handleChange} />
-        </div>
-        <div>
-          <label className="form-label" htmlFor="end_date">End Date & Time</label>
-          <input id="end_date" name="end_date" type="datetime-local" className="form-input"
-            value={form.end_date} onChange={handleChange} />
-        </div>
-      </div>
+        <input
+          name="slug"
+          type="text"
+          className="form-input"
+          value={form.slug}
+          onChange={handleChange}
+        />
 
-      {/* Location */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <div>
-          <label className="form-label" htmlFor="location_type">Location Type *</label>
-          <select id="location_type" name="location_type" className="form-input"
-            value={form.location_type} onChange={handleChange}>
-            <option value="virtual">Virtual</option>
-            <option value="physical">In-Person</option>
-            <option value="hybrid">Hybrid</option>
-          </select>
-        </div>
-        <div>
-          <label className="form-label" htmlFor="location_detail">
-            {form.location_type === "virtual" ? "Meeting URL" : "Address / Venue"}
-          </label>
-          <input id="location_detail" name="location_detail" type="text" className="form-input"
-            placeholder={form.location_type === "virtual" ? "https://..." : "Venue address"}
-            value={form.location_detail} onChange={handleChange} />
-        </div>
-      </div>
-
-      {/* Registration form link */}
-      <div>
-        <label className="form-label" htmlFor="registration_form_id">Link Registration Form</label>
-        <select id="registration_form_id" name="registration_form_id" className="form-input"
-          value={form.registration_form_id} onChange={handleChange}>
-          <option value="">— No registration form —</option>
-          {publishedForms.map((f) => (
-            <option key={f.id} value={f.id}>{f.title}</option>
-          ))}
-        </select>
-        <p className="text-slate-600 text-xs mt-1.5">
-          Only published forms appear here. Create and publish a form first.
+        <p className="text-xs text-slate-500 mt-2">
+          Public URL:{" "}
+          {publicEventUrl || "No slug yet"}
         </p>
       </div>
 
-      {/* Featured */}
-      <div className="flex items-center gap-3">
-        <input
-          id="is_featured"
-          name="is_featured"
-          type="checkbox"
-          className="w-4 h-4 rounded border-ocean-600 bg-ocean-800 text-teal-500
-                     focus:ring-teal-500/30 focus:ring-offset-0"
-          checked={form.is_featured}
+      <div>
+        <label className="form-label">
+          Description
+        </label>
+
+        <textarea
+          name="description"
+          rows={5}
+          className="form-input resize-none"
+          value={form.description}
           onChange={handleChange}
         />
-        <label htmlFor="is_featured" className="text-slate-300 text-sm cursor-pointer">
-          Feature this event on the homepage
-        </label>
       </div>
 
-      {error && (
-        <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3">
-          <p className="text-red-400 text-sm">{error}</p>
+      <div>
+        <label className="form-label">
+          Event Cover Image
+        </label>
+
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="form-input"
+        />
+
+        {uploadingImage && (
+          <p className="text-sm text-slate-400 mt-2">
+            Uploading image...
+          </p>
+        )}
+
+        {form.cover_image_url && (
+          <img
+            src={form.cover_image_url}
+            alt="Event Cover"
+            className="mt-4 rounded-xl w-full h-64 object-cover border border-ocean-700"
+          />
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div>
+          <label className="form-label">
+            Event Date
+          </label>
+
+          <input
+            type="date"
+            name="event_date"
+            className="form-input"
+            value={form.event_date}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div>
+          <label className="form-label">
+            Start Time
+          </label>
+
+          <input
+            type="time"
+            name="start_time"
+            className="form-input"
+            value={form.start_time}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div>
+          <label className="form-label">
+            End Time
+          </label>
+
+          <input
+            type="time"
+            name="end_time"
+            className="form-input"
+            value={form.end_time}
+            onChange={handleChange}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="form-label">
+          Location / Venue
+        </label>
+
+        <input
+          type="text"
+          name="location"
+          className="form-input"
+          value={form.location}
+          onChange={handleChange}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div>
+          <label className="form-label">
+            Attendance Type
+          </label>
+
+          <select
+            name="attendance_type"
+            className="form-input"
+            value={form.attendance_type}
+            onChange={handleChange}
+          >
+            <option value="physical">
+              Physical
+            </option>
+
+            <option value="virtual">
+              Virtual
+            </option>
+
+            <option value="hybrid">
+              Hybrid
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label className="form-label">
+            Status
+          </label>
+
+          <select
+            name="status"
+            className="form-input"
+            value={form.status}
+            onChange={handleChange}
+          >
+            <option value="draft">
+              Draft
+            </option>
+
+            <option value="published">
+              Published
+            </option>
+
+            <option value="completed">
+              Completed
+            </option>
+
+            <option value="cancelled">
+              Cancelled
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label className="form-label">
+            Visibility
+          </label>
+
+          <select
+            name="visibility"
+            className="form-input"
+            value={form.visibility}
+            onChange={handleChange}
+          >
+            <option value="public">
+              Public
+            </option>
+
+            <option value="private">
+              Private
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="form-label">
+          Event Capacity
+        </label>
+
+        <input
+          type="number"
+          name="capacity"
+          className="form-input"
+          value={form.capacity}
+          onChange={handleChange}
+        />
+      </div>
+
+      <div>
+        <label className="form-label">
+          Registration Form
+        </label>
+
+        <select
+          name="registration_form_id"
+          className="form-input"
+          value={form.registration_form_id}
+          onChange={handleChange}
+        >
+          <option value="">
+            No linked form
+          </option>
+
+          {publishedForms.map((form) => (
+            <option
+              key={form.id}
+              value={form.id}
+            >
+              {form.title}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            name="generate_qr"
+            checked={form.generate_qr}
+            onChange={handleChange}
+          />
+
+          <label className="text-sm text-slate-300">
+            Generate QR Code
+          </label>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            name="is_featured"
+            checked={form.is_featured}
+            onChange={handleChange}
+          />
+
+          <label className="text-sm text-slate-300">
+            Feature this event on the landing page
+          </label>
+        </div>
+      </div>
+
+      {qrCode && (
+        <div className="rounded-2xl border border-ocean-700 p-5 bg-ocean-900/40">
+          <img
+            src={qrCode}
+            alt="QR Code"
+            className="w-52 h-52"
+          />
+
+          <a
+            href={qrCode}
+            download={`${form.slug}-qr.png`}
+            className="btn-primary inline-block mt-4 px-5 py-2"
+          >
+            Download QR
+          </a>
         </div>
       )}
 
-      {/* Actions */}
-      <div className="flex items-center gap-3 pt-2">
-        <button type="submit" disabled={loading} className="btn-primary px-7 py-3">
-          {loading ? "Saving..." : isEdit ? "Save Changes" : "Create Event"}
+      {error && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4">
+          <p className="text-red-400 text-sm">
+            {error}
+          </p>
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 pt-4">
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn-primary px-7 py-3"
+        >
+          {loading
+            ? "Saving..."
+            : isEdit
+            ? "Save Changes"
+            : "Create Event"}
         </button>
+
         <button
           type="button"
           onClick={() => router.back()}
@@ -182,13 +579,12 @@ export default function EventForm({ event, publishedForms }: EventFormProps) {
         >
           Cancel
         </button>
+
         {isEdit && (
           <button
             type="button"
             onClick={handleDelete}
-            disabled={loading}
-            className="ml-auto px-5 py-3 rounded-lg text-red-400 hover:text-white hover:bg-red-500/15
-                       border border-transparent hover:border-red-500/30 text-sm font-medium transition-all"
+            className="ml-auto text-red-400 hover:text-red-300"
           >
             Delete Event
           </button>
