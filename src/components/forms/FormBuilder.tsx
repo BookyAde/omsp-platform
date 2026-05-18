@@ -22,6 +22,13 @@ interface FormBuilderProps {
     form_mode?: "single_page" | "multi_step";
     deadline: string | null;
     fields: FormFieldDraft[];
+
+    approval_email_enabled?: boolean;
+    approval_email_subject?: string | null;
+    approval_email_message?: string | null;
+    rejection_email_enabled?: boolean;
+    rejection_email_subject?: string | null;
+    rejection_email_message?: string | null;
   };
 }
 
@@ -46,6 +53,15 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [copyText, setCopyText] = useState("Copy link");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const [approvalEmailEnabled, setApprovalEmailEnabled] = useState(true);
+  const [approvalEmailSubject, setApprovalEmailSubject] = useState("");
+  const [approvalEmailMessage, setApprovalEmailMessage] = useState("");
+
+  const [rejectionEmailEnabled, setRejectionEmailEnabled] = useState(true);
+  const [rejectionEmailSubject, setRejectionEmailSubject] = useState("");
+  const [rejectionEmailMessage, setRejectionEmailMessage] = useState("");
 
   useEffect(() => {
     if (!initialData) return;
@@ -59,6 +75,14 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
     setGenerateQr(initialData.generate_qr ?? false);
     setFormMode(initialData.form_mode ?? "single_page");
     setDeadline(initialData.deadline ? initialData.deadline.slice(0, 16) : "");
+
+    setApprovalEmailEnabled(initialData.approval_email_enabled ?? true);
+    setApprovalEmailSubject(initialData.approval_email_subject ?? "");
+    setApprovalEmailMessage(initialData.approval_email_message ?? "");
+
+    setRejectionEmailEnabled(initialData.rejection_email_enabled ?? true);
+    setRejectionEmailSubject(initialData.rejection_email_subject ?? "");
+    setRejectionEmailMessage(initialData.rejection_email_message ?? "");
 
     setFields(
       (initialData.fields ?? []).map((field, index) => ({
@@ -166,6 +190,14 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
         generate_qr: generateQr,
         form_mode: formMode,
         deadline: deadline || null,
+
+        approval_email_enabled: approvalEmailEnabled,
+        approval_email_subject: approvalEmailSubject.trim() || null,
+        approval_email_message: approvalEmailMessage.trim() || null,
+        rejection_email_enabled: rejectionEmailEnabled,
+        rejection_email_subject: rejectionEmailSubject.trim() || null,
+        rejection_email_message: rejectionEmailMessage.trim() || null,
+
         fields: fields.map((field, index) => ({
           ...field,
           step: field.step ?? "General",
@@ -202,7 +234,6 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
 
   async function handleDelete() {
     if (!initialData?.id) return;
-    if (!confirm("Permanently delete this form and all its submissions?")) return;
 
     setSaving(true);
 
@@ -215,6 +246,7 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
       router.refresh();
     } finally {
       setSaving(false);
+      setShowDeleteModal(false);
     }
   }
 
@@ -382,11 +414,6 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
                 <option value="public">Public</option>
                 <option value="private">Private</option>
               </select>
-
-              <p className="text-slate-600 text-xs mt-1.5">
-                Public forms appear on the opportunities page. Private forms are
-                hidden but can still be used internally.
-              </p>
             </div>
 
             <div>
@@ -399,11 +426,6 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
                 <option value="no">No, just collect submissions</option>
                 <option value="yes">Yes, admin must approve</option>
               </select>
-
-              <p className="text-slate-600 text-xs mt-1.5">
-                Enable this if submissions should be reviewed and approved before
-                being accepted, for example membership forms.
-              </p>
             </div>
 
             <div>
@@ -416,10 +438,6 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
                 <option value="no">No QR code</option>
                 <option value="yes">Generate QR code</option>
               </select>
-
-              <p className="text-slate-600 text-xs mt-1.5">
-                Generate a QR code that links directly to this public form.
-              </p>
             </div>
 
             <div>
@@ -450,11 +468,6 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
                   Multi Step
                 </button>
               </div>
-
-              <p className="text-slate-600 text-xs mt-1.5">
-                Choose how the form is presented to users. Multi-step improves
-                completion for long forms.
-              </p>
             </div>
 
             <div>
@@ -473,14 +486,6 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
                   placeholder="your-form-slug"
                 />
               </div>
-
-              <p className="text-slate-600 text-xs mt-1.5">
-                Public URL:{" "}
-                {typeof window !== "undefined"
-                  ? window.location.origin
-                  : "https://omsp.org"}
-                /f/{slug || "your-slug"}
-              </p>
             </div>
 
             <div>
@@ -491,10 +496,6 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
                 value={deadline}
                 onChange={(e) => setDeadline(e.target.value)}
               />
-
-              <p className="text-slate-600 text-xs mt-1.5">
-                Form automatically stops accepting responses after this date.
-              </p>
             </div>
 
             {isEdit && (
@@ -533,6 +534,124 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
             )}
           </div>
 
+          <div className="glass-card p-6 space-y-5">
+            <div>
+              <h3 className="font-display font-bold text-white">
+                Approval & Rejection Emails
+              </h3>
+
+              <p className="text-slate-500 text-sm mt-1">
+                Configure the automatic emails sent when submissions for this
+                form are approved or rejected.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-ocean-700/50 bg-ocean-900/40 p-5 space-y-4">
+              <div>
+                <label className="form-label">Send Approval Email</label>
+                <select
+                  className="form-input"
+                  value={approvalEmailEnabled ? "yes" : "no"}
+                  onChange={(e) =>
+                    setApprovalEmailEnabled(e.target.value === "yes")
+                  }
+                >
+                  <option value="yes">Yes, send approval email</option>
+                  <option value="no">No, do not send approval email</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Approval Email Subject</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={approvalEmailSubject}
+                  onChange={(e) => setApprovalEmailSubject(e.target.value)}
+                  placeholder="Your submission has been approved"
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Approval Email Message</label>
+                <textarea
+                  rows={8}
+                  className="form-input resize-y"
+                  value={approvalEmailMessage}
+                  onChange={(e) => setApprovalEmailMessage(e.target.value)}
+                  placeholder={`Hello {{name}},
+
+Your submission for {{form_title}} has been approved.
+
+You can now proceed with the next step here:
+https://example.com
+
+Regards,
+{{site_name}} Team`}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-ocean-700/50 bg-ocean-900/40 p-5 space-y-4">
+              <div>
+                <label className="form-label">Send Rejection Email</label>
+                <select
+                  className="form-input"
+                  value={rejectionEmailEnabled ? "yes" : "no"}
+                  onChange={(e) =>
+                    setRejectionEmailEnabled(e.target.value === "yes")
+                  }
+                >
+                  <option value="yes">Yes, send rejection email</option>
+                  <option value="no">No, do not send rejection email</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Rejection Email Subject</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={rejectionEmailSubject}
+                  onChange={(e) => setRejectionEmailSubject(e.target.value)}
+                  placeholder="Update on your submission"
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Rejection Email Message</label>
+                <textarea
+                  rows={8}
+                  className="form-input resize-y"
+                  value={rejectionEmailMessage}
+                  onChange={(e) => setRejectionEmailMessage(e.target.value)}
+                  placeholder={`Hello {{name}},
+
+Thank you for submitting {{form_title}}.
+
+After review, we are unable to approve your submission at this time.
+
+Reason:
+{{review_note}}
+
+Regards,
+{{site_name}} Team`}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-teal-500/20 bg-teal-500/10 p-4">
+              <p className="text-teal-300 text-sm font-medium mb-2">
+                Available placeholders
+              </p>
+
+              <p className="text-slate-400 text-xs leading-6 font-mono">
+                {"{{name}}"} {"{{email}}"} {"{{form_title}}"} {"{{status}}"}{" "}
+                {"{{review_note}}"} {"{{organization_name}}"} {"{{site_name}}"}
+              </p>
+            </div>
+          </div>
+
           {generateQr && slug && (
             <div className="glass-card p-6">
               <h3 className="font-display font-bold text-white mb-3">
@@ -560,7 +679,7 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
 
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => setShowDeleteModal(true)}
                 disabled={saving}
                 className="px-5 py-2.5 rounded-lg text-red-400 hover:text-white hover:bg-red-500/15 border border-red-500/30 text-sm font-medium transition-all"
               >
@@ -568,6 +687,50 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-red-500/20 bg-ocean-950 shadow-2xl">
+            <div className="border-b border-ocean-700/50 px-6 py-5">
+              <h2 className="font-display text-xl font-bold text-white">
+                Delete Form
+              </h2>
+
+              <p className="mt-2 text-sm text-slate-500">
+                This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="px-6 py-5">
+              <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4">
+                <p className="text-sm text-slate-300 leading-7">
+                  Permanently delete this form and all associated submissions?
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-ocean-700/50 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={saving}
+                className="btn-ghost text-sm px-4 py-2"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={saving}
+                className="px-5 py-2.5 rounded-lg bg-red-500/15 text-red-300 border border-red-500/30 hover:bg-red-500/20 text-sm font-medium transition-all disabled:opacity-50"
+              >
+                {saving ? "Deleting..." : "Delete Form"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

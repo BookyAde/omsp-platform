@@ -62,7 +62,7 @@ function EventCard({ event }: { event: Event }) {
         <img
           src={event.cover_image_url}
           alt={event.title}
-          className="mb-5 h-44 w-full rounded-xl object-cover border border-ocean-700"
+          className="mb-5 h-44 w-full rounded-xl object-contain bg-ocean-900 border border-ocean-700"
         />
       )}
 

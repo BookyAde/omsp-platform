@@ -3,6 +3,36 @@ import { createAdminClient } from "@/lib/supabase";
 import { requireAdmin, badRequest, serverError } from "@/lib/server-utils";
 import { sendEmail } from "@/lib/email";
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function renderTemplate(template: string, variables: Record<string, string>) {
+  let output = template;
+
+  for (const [key, value] of Object.entries(variables)) {
+    output = output.replaceAll(`{{${key}}}`, value);
+  }
+
+  return output;
+}
+
+function textToHtml(text: string) {
+  const escaped = escapeHtml(text);
+
+  return escaped
+    .replace(
+      /(https?:\/\/[^\s<]+)/g,
+      `<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>`
+    )
+    .replaceAll("\n", "<br />");
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -20,7 +50,10 @@ export async function PATCH(
     return badRequest("Invalid JSON body.");
   }
 
-  const { status } = body as { status?: string };
+  const { status, review_note } = body as {
+    status?: string;
+    review_note?: string;
+  };
 
   if (!["pending", "approved", "rejected"].includes(status ?? "")) {
     return badRequest("Invalid submission status.");
@@ -34,7 +67,16 @@ export async function PATCH(
       id,
       status,
       form_id,
-      form:forms(id, title),
+      form:forms(
+        id,
+        title,
+        approval_email_enabled,
+        approval_email_subject,
+        approval_email_message,
+        rejection_email_enabled,
+        rejection_email_subject,
+        rejection_email_message
+      ),
       values:form_submission_values(
         id,
         value,
@@ -51,14 +93,27 @@ export async function PATCH(
     );
   }
 
+  const cleanedReviewNote = review_note?.trim() || null;
+
   const { data: updated, error: updateErr } = await admin
     .from("form_submissions")
-    .update({ status })
+    .update({
+      status,
+      review_note: cleanedReviewNote,
+      reviewed_at: new Date().toISOString(),
+    })
     .eq("id", submissionId)
     .select()
     .single();
 
   if (updateErr) return serverError(updateErr.message);
+
+  await admin.from("submission_status_logs").insert({
+    submission_id: submissionId,
+    old_status: submission.status,
+    new_status: status,
+    note: cleanedReviewNote,
+  });
 
   const values = submission.values ?? [];
 
@@ -74,67 +129,111 @@ export async function PATCH(
     String(item.field?.label ?? "").toLowerCase().includes("name")
   );
 
-  const applicantName = nameValue
-    ? String(nameValue.value ?? "").trim()
-    : "";
+  const applicantName = nameValue ? String(nameValue.value ?? "").trim() : "";
+
+  const form = Array.isArray(submission.form)
+    ? submission.form[0]
+    : submission.form;
+
+  const formTitle = form?.title ?? "OMSP Form";
+
+  const variables: Record<string, string> = {
+    name: applicantName || "there",
+    email: applicantEmail,
+    form_title: String(formTitle),
+    status: status ?? "",
+    review_note: cleanedReviewNote ?? "",
+    organization_name: "Organization of Marine Science Professionals",
+    site_name: "OMSP",
+  };
 
   if (applicantEmail && applicantEmail.includes("@")) {
     try {
       if (status === "approved") {
-        await sendEmail({
-          to: applicantEmail,
-          subject: "Your OMSP Submission Has Been Approved",
-          html: `
-            <div style="font-family: Arial, sans-serif; line-height: 1.7; color: #222;">
-              <h2>Congratulations${applicantName ? `, ${applicantName}` : ""}</h2>
+        const customSubject = form?.approval_email_subject?.trim();
+        const customMessage = form?.approval_email_message?.trim();
+        const isEnabled = form?.approval_email_enabled !== false;
 
-              <p>
-                We are pleased to let you know that your submission to the
-                <strong> Organization of Marine Science Professionals (OMSP)</strong>
-                has been approved.
-              </p>
+        if (isEnabled) {
+          await sendEmail({
+            to: applicantEmail,
+            subject: customSubject || "Your OMSP Submission Has Been Approved",
+            html: customMessage
+              ? `
+                <div style="font-family: Arial, sans-serif; line-height: 1.7; color: #222;">
+                  ${textToHtml(renderTemplate(customMessage, variables))}
+                </div>
+              `
+              : `
+                <div style="font-family: Arial, sans-serif; line-height: 1.7; color: #222;">
+                  <h2>Congratulations${applicantName ? `, ${applicantName}` : ""}</h2>
 
-              <p>
-                Thank you for taking the time to connect with OMSP. We are excited to have you as part of our growing professional community.
-              </p>
+                  <p>
+                    We are pleased to let you know that your submission to the
+                    <strong>Organization of Marine Science Professionals (OMSP)</strong>
+                    has been approved.
+                  </p>
 
-              <p style="margin-top: 28px;">
-                Warm regards,<br />
-                <strong>OMSP Team</strong>
-              </p>
-            </div>
-          `,
-        });
+                  <p>
+                    Thank you for taking the time to connect with OMSP. We are excited to have you as part of our growing professional community.
+                  </p>
+
+                  <p style="margin-top: 28px;">
+                    Warm regards,<br />
+                    <strong>OMSP Team</strong>
+                  </p>
+                </div>
+              `,
+          });
+        }
       }
 
       if (status === "rejected") {
-        await sendEmail({
-          to: applicantEmail,
-          subject: "Update on Your OMSP Submission",
-          html: `
-            <div style="font-family: Arial, sans-serif; line-height: 1.7; color: #222;">
-              <h2>Hello${applicantName ? ` ${applicantName}` : ""},</h2>
+        const customSubject = form?.rejection_email_subject?.trim();
+        const customMessage = form?.rejection_email_message?.trim();
+        const isEnabled = form?.rejection_email_enabled !== false;
 
-              <p>
-                Thank you for submitting your details to the
-                <strong> Organization of Marine Science Professionals (OMSP)</strong>.
-              </p>
+        if (isEnabled) {
+          await sendEmail({
+            to: applicantEmail,
+            subject: customSubject || "Update on Your OMSP Submission",
+            html: customMessage
+              ? `
+                <div style="font-family: Arial, sans-serif; line-height: 1.7; color: #222;">
+                  ${textToHtml(renderTemplate(customMessage, variables))}
+                </div>
+              `
+              : `
+                <div style="font-family: Arial, sans-serif; line-height: 1.7; color: #222;">
+                  <h2>Hello${applicantName ? ` ${applicantName}` : ""},</h2>
 
-              <p>
-                After reviewing your submission, we are unable to approve it at this time.
-              </p>
+                  <p>
+                    Thank you for submitting your details to the
+                    <strong>Organization of Marine Science Professionals (OMSP)</strong>.
+                  </p>
 
-              <p>
-                You may contact the OMSP team for clarification or further guidance if needed.
-              </p>
+                  <p>
+                    After reviewing your submission, we are unable to approve it at this time.
+                  </p>
 
-              <p style="margin-top: 28px;">
-                Warm regards,<br />
-                <strong>OMSP Team</strong>
-              </p>
-            </div>
-          `,
-        });
+                  ${
+                    cleanedReviewNote
+                      ? `<p><strong>Review note:</strong><br />${textToHtml(cleanedReviewNote)}</p>`
+                      : ""
+                  }
+
+                  <p>
+                    You may contact the OMSP team for clarification or further guidance if needed.
+                  </p>
+
+                  <p style="margin-top: 28px;">
+                    Warm regards,<br />
+                    <strong>OMSP Team</strong>
+                  </p>
+                </div>
+              `,
+          });
+        }
       }
     } catch (emailError) {
       console.error("Submission status email failed:", emailError);

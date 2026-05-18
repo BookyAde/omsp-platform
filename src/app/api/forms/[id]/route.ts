@@ -84,7 +84,36 @@ export async function PATCH(
     .from("forms")
     .update({
       ...formData,
+
       form_mode: formData.form_mode ?? "single_page",
+
+      approval_email_enabled:
+        formData.approval_email_enabled ?? true,
+
+      approval_email_subject:
+        formData.approval_email_subject ?? null,
+
+      approval_email_message:
+        formData.approval_email_message ?? null,
+
+      rejection_email_enabled:
+        formData.rejection_email_enabled ?? true,
+
+      rejection_email_subject:
+        formData.rejection_email_subject ?? null,
+
+      rejection_email_message:
+        formData.rejection_email_message ?? null,
+
+      admin_notification_enabled:
+        formData.admin_notification_enabled ?? true,
+
+      admin_notification_subject:
+        formData.admin_notification_subject ?? null,
+
+      admin_notification_message:
+        formData.admin_notification_message ?? null,
+
       updated_at: new Date().toISOString(),
     })
     .eq("id", formId);

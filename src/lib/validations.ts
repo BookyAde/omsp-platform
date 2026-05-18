@@ -121,8 +121,19 @@ export const formSchema = z.object({
   requires_review: z.boolean().optional().default(false),
   generate_qr: z.boolean().optional().default(false),
 
-  // Public form display mode
   form_mode: z.enum(["single_page", "multi_step"]).optional().default("single_page"),
+
+  approval_email_enabled: z.boolean().optional().default(true),
+  approval_email_subject: z.string().max(300).optional().nullable(),
+  approval_email_message: z.string().max(8000).optional().nullable(),
+
+  rejection_email_enabled: z.boolean().optional().default(true),
+  rejection_email_subject: z.string().max(300).optional().nullable(),
+  rejection_email_message: z.string().max(8000).optional().nullable(),
+
+  admin_notification_enabled: z.boolean().optional().default(true),
+  admin_notification_subject: z.string().max(300).optional().nullable(),
+  admin_notification_message: z.string().max(8000).optional().nullable(),
 });
 
 export type FormInput = z.infer<typeof formSchema>;
