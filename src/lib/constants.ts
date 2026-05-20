@@ -76,6 +76,12 @@ export const ADMIN_NAV = [
     href: "/admin/sponsors",
     icon: "Building2",
   },
+
+  {
+    label: "Certificates",
+    href: "/admin/certificates",
+    icon: "Award",
+  }
 ] as const;
 
 // ─── Form field types (for UI labels) ─────────────────────────────────────────
