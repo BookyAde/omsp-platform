@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
 function pickValue(values: any[], keywords: string[]) {
   const found = values.find((item) => {
     const label = item.form_fields?.label?.toLowerCase() || "";
