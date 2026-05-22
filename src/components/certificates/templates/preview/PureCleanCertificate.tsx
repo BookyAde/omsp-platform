@@ -67,6 +67,7 @@ export default function PureCleanCertificate({
   recipientName,
   certificateTitle,
   issueDate,
+  expiryDate,
   certificateId,
   organizationName = "Organization of Marine Science Professionals",
   description = "This certificate is issued in recognition of successful participation, contribution, and professional commitment.",
@@ -83,15 +84,22 @@ export default function PureCleanCertificate({
 
   const signatureText =
     designOverrides?.signatureText || signatoryName || "Authorized Signatory";
+
   const signatureTitle =
-    designOverrides?.signatureTitle || signatoryTitle || "OMSP Administration";
-  const signatureStyle = designOverrides?.signatureStyle || "executive";
+    designOverrides?.signatureTitle ||
+    signatoryTitle ||
+    "OMSP Administration";
+
+  const signatureStyle =
+    designOverrides?.signatureStyle || "executive";
 
   return (
     <div className="w-full overflow-x-auto rounded-2xl bg-slate-100 p-4">
       <div className="relative mx-auto aspect-[1.414/1] w-full max-w-5xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
         <div className="absolute inset-6 rounded-lg border border-slate-200" />
+
         <div className="absolute left-10 top-10 h-24 w-24 rounded-full border border-slate-200" />
+
         <div className="absolute bottom-10 right-10 h-24 w-24 rounded-full border border-slate-200" />
 
         {showWatermark && (
@@ -164,10 +172,27 @@ export default function PureCleanCertificate({
 
           <div className="grid w-full grid-cols-3 items-end gap-6">
             <div className="text-left text-xs text-slate-500">
-              <p className="font-semibold text-slate-700">Certificate ID</p>
+              <p className="font-semibold text-slate-700">
+                Certificate ID
+              </p>
+
               <p>{certificateId}</p>
-              <p className="mt-3 font-semibold text-slate-700">Date Issued</p>
+
+              <p className="mt-3 font-semibold text-slate-700">
+                Date Issued
+              </p>
+
               <p>{issueDate}</p>
+
+              {expiryDate && (
+                <>
+                  <p className="mt-3 font-semibold text-slate-700">
+                    Valid Until
+                  </p>
+
+                  <p>{expiryDate}</p>
+                </>
+              )}
             </div>
 
             <div className="text-center">

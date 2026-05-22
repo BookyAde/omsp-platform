@@ -23,6 +23,7 @@ export type CertificateTemplateProps = {
   recipientName: string;
   certificateTitle: string;
   issueDate: string;
+  expiryDate?: string | null;
   certificateId: string;
   organizationName?: string;
   description?: string;

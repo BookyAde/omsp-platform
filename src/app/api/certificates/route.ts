@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
         certificateTitle,
         certificateId,
         issueDate,
+        expiryDate: body.expiry_date || null,
         organizationName: "Organization of Marine Science Professionals",
         description:
           designOverrides.description ||

@@ -41,6 +41,7 @@ export default function OMSPMembershipCertificate({
   recipientName,
   certificateTitle,
   issueDate,
+  expiryDate,
   certificateId,
   organizationName = "Organization of Marine Science Professionals",
   description = "This certifies that the named individual is recognized as a member of the Organization of Marine Science Professionals, subject to verification and membership validity.",
@@ -57,8 +58,10 @@ export default function OMSPMembershipCertificate({
 
   const signatureText =
     designOverrides?.signatureText || signatoryName || "Authorized Signatory";
+
   const signatureTitle =
     designOverrides?.signatureTitle || signatoryTitle || "OMSP Administration";
+
   const signatureStyle = designOverrides?.signatureStyle || "executive";
 
   return (
@@ -157,7 +160,11 @@ export default function OMSPMembershipCertificate({
                 {description}
               </p>
 
-              <div className="mx-auto mt-6 grid max-w-2xl grid-cols-3 gap-3 text-left text-xs">
+              <div
+                className={`mx-auto mt-6 grid max-w-3xl gap-3 text-left text-xs ${
+                  expiryDate ? "grid-cols-4" : "grid-cols-3"
+                }`}
+              >
                 <div className="rounded-xl border border-cyan-900/10 bg-white/70 p-3">
                   <p className="font-semibold text-cyan-900">Member ID</p>
                   <p className="mt-1 text-slate-600">{certificateId}</p>
@@ -168,9 +175,18 @@ export default function OMSPMembershipCertificate({
                   <p className="mt-1 text-slate-600">{issueDate}</p>
                 </div>
 
+                {expiryDate && (
+                  <div className="rounded-xl border border-cyan-900/10 bg-white/70 p-3">
+                    <p className="font-semibold text-cyan-900">Valid Until</p>
+                    <p className="mt-1 text-slate-600">{expiryDate}</p>
+                  </div>
+                )}
+
                 <div className="rounded-xl border border-cyan-900/10 bg-white/70 p-3">
                   <p className="font-semibold text-cyan-900">Status</p>
-                  <p className="mt-1 text-slate-600">Verified Member</p>
+                  <p className="mt-1 text-slate-600">
+                    {expiryDate ? "Verified Active Member" : "Verified Member"}
+                  </p>
                 </div>
               </div>
             </div>

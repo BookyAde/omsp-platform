@@ -897,6 +897,13 @@ export default function CertificatesClient({
               "Certificate of Participation"
             }
             issueDate={new Date().toLocaleDateString()}
+            expiryDate={
+              submissionCertificateSettings.expiry_date
+                ? new Date(
+                    submissionCertificateSettings.expiry_date
+                  ).toLocaleDateString()
+                : undefined
+            }
             certificateId="OMSP-PREVIEW-001"
             organizationName="Organization of Marine Science Professionals"
             description={
@@ -1339,6 +1346,11 @@ export default function CertificatesClient({
               manualForm.certificate_title || "Certificate of Recognition"
             }
             issueDate={new Date().toLocaleDateString()}
+            expiryDate={
+                manualForm.expiry_date
+                  ? new Date(manualForm.expiry_date).toLocaleDateString()
+                  : undefined
+              }
             certificateId="OMSP-MANUAL-PREVIEW"
             organizationName="Organization of Marine Science Professionals"
             description={manualForm.certificate_description || DEFAULT_DESCRIPTION}

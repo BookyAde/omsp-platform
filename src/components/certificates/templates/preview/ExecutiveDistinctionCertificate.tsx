@@ -41,6 +41,7 @@ export default function ExecutiveDistinctionCertificate({
   recipientName,
   certificateTitle,
   issueDate,
+  expiryDate,
   certificateId,
   organizationName = "Organization of Marine Science Professionals",
   description = "This certificate is issued in distinguished recognition of exceptional service, leadership, partnership, and professional contribution.",
@@ -150,6 +151,15 @@ export default function ExecutiveDistinctionCertificate({
 
               <p className="mt-3 font-semibold text-[#d6b25e]">Date Issued</p>
               <p>{issueDate}</p>
+
+              {expiryDate && (
+                <>
+                  <p className="mt-3 font-semibold text-[#d6b25e]">
+                    Valid Until
+                  </p>
+                  <p>{expiryDate}</p>
+                </>
+              )}
             </div>
 
             <div className="text-center">

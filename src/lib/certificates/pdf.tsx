@@ -9,6 +9,7 @@ export type GenerateCertificatePDFInput = {
   organizationName?: string;
   description?: string;
   verificationUrl?: string;
+  expiryDate?: string | null;
   qrCodeDataUrl?: string;
   templateId?: string | null;
   signatoryName?: string;

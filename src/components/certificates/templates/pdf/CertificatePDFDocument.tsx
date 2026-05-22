@@ -17,6 +17,7 @@ type CertificatePDFProps = {
   organizationName?: string;
   description?: string;
   verificationUrl?: string;
+  expiryDate?: string | null;
   qrCodeDataUrl?: string;
   templateId?: string | null;
   signatoryName?: string;
@@ -428,6 +429,7 @@ function SignatureBlock({
 function Footer({
   certificateId,
   issueDate,
+  expiryDate,
   qrCodeDataUrl,
   signatureText,
   signatureTitle,
@@ -442,6 +444,7 @@ function Footer({
 }: {
   certificateId: string;
   issueDate: string;
+  expiryDate?: string | null;
   qrCodeDataUrl?: string;
   signatureText: string;
   signatureTitle: string;
@@ -460,12 +463,30 @@ function Footer({
         <Text style={[styles.metaLabel, { color: labelColor }]}>
           {membership ? "Membership ID" : "Certificate ID"}
         </Text>
-        <Text style={[styles.metaValue, { color: valueColor }]}>{certificateId}</Text>
+
+        <Text style={[styles.metaValue, { color: valueColor }]}>
+          {certificateId}
+        </Text>
 
         <Text style={[styles.metaLabel, { color: labelColor }]}>
           {membership ? "Issue Date" : "Date Issued"}
         </Text>
-        <Text style={[styles.metaValue, { color: valueColor }]}>{issueDate}</Text>
+
+        <Text style={[styles.metaValue, { color: valueColor }]}>
+          {issueDate}
+        </Text>
+
+        {expiryDate && (
+          <>
+            <Text style={[styles.metaLabel, { color: labelColor }]}>
+              Valid Until
+            </Text>
+
+            <Text style={[styles.metaValue, { color: valueColor }]}>
+              {expiryDate}
+            </Text>
+          </>
+        )}
       </View>
 
       <SignatureBlock
@@ -477,7 +498,10 @@ function Footer({
         titleColor={signatureTitleColor}
       />
 
-      <QrBlock qrCodeDataUrl={qrCodeDataUrl} borderColor={qrBorderColor} />
+      <QrBlock
+        qrCodeDataUrl={qrCodeDataUrl}
+        borderColor={qrBorderColor}
+      />
     </View>
   );
 }
@@ -521,6 +545,7 @@ function ClassicMaritimePDF(props: RenderProps) {
           <Footer
             certificateId={props.certificateId}
             issueDate={props.issueDate}
+            expiryDate={props.expiryDate}
             qrCodeDataUrl={props.qrCodeDataUrl}
             signatureText={props.signatureText}
             signatureTitle={props.signatureTitle}
@@ -593,6 +618,7 @@ function PureCleanPDF(props: RenderProps) {
           <Footer
             certificateId={props.certificateId}
             issueDate={props.issueDate}
+            expiryDate={props.expiryDate}
             qrCodeDataUrl={props.qrCodeDataUrl}
             signatureText={props.signatureText}
             signatureTitle={props.signatureTitle}
@@ -673,6 +699,7 @@ function OceanDepthPDF(props: RenderProps) {
           <Footer
             certificateId={props.certificateId}
             issueDate={props.issueDate}
+            expiryDate={props.expiryDate}
             qrCodeDataUrl={props.qrCodeDataUrl}
             signatureText={props.signatureText}
             signatureTitle={props.signatureTitle}
@@ -760,6 +787,7 @@ function ExecutiveDistinctionPDF(props: RenderProps) {
           <Footer
             certificateId={props.certificateId}
             issueDate={props.issueDate}
+            expiryDate={props.expiryDate}
             qrCodeDataUrl={props.qrCodeDataUrl}
             signatureText={props.signatureText}
             signatureTitle={props.signatureTitle}
@@ -890,6 +918,7 @@ function OMSPMembershipPDF(props: RenderProps) {
           <Footer
             certificateId={props.certificateId}
             issueDate={props.issueDate}
+            expiryDate={props.expiryDate}
             qrCodeDataUrl={props.qrCodeDataUrl}
             signatureText={props.signatureText}
             signatureTitle={props.signatureTitle}
@@ -919,6 +948,7 @@ type RenderProps = {
   certificateTitle: string;
   certificateId: string;
   issueDate: string;
+  expiryDate?: string | null;
   organizationName: string;
   finalDescription: string;
   verificationUrl?: string;
@@ -935,6 +965,7 @@ export default function CertificatePDFDocument({
   certificateTitle,
   certificateId,
   issueDate,
+  expiryDate,
   organizationName = "Organization of Marine Science Professionals",
   description = "This certificate is issued in recognition of participation, achievement, and professional commitment.",
   verificationUrl,
@@ -962,6 +993,7 @@ export default function CertificatePDFDocument({
     certificateTitle,
     certificateId,
     issueDate,
+    expiryDate,
     organizationName,
     finalDescription,
     verificationUrl,

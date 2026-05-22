@@ -67,6 +67,7 @@ export default function ClassicMaritimeCertificate({
   recipientName,
   certificateTitle,
   issueDate,
+  expiryDate,
   certificateId,
   organizationName = "Organization of Marine Science Professionals",
   description = "This certificate is proudly issued in recognition of participation, achievement, and professional commitment.",
@@ -166,8 +167,16 @@ export default function ClassicMaritimeCertificate({
             <div className="text-left text-xs text-slate-700">
               <p className="font-semibold">Certificate ID</p>
               <p>{certificateId}</p>
+
               <p className="mt-3 font-semibold">Issued</p>
               <p>{issueDate}</p>
+
+              {expiryDate && (
+                <>
+                  <p className="mt-3 font-semibold">Valid Until</p>
+                  <p>{expiryDate}</p>
+                </>
+              )}
             </div>
 
             <div className="text-center">

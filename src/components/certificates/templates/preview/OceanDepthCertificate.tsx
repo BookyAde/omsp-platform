@@ -67,6 +67,7 @@ export default function OceanDepthCertificate({
   recipientName,
   certificateTitle,
   issueDate,
+  expiryDate,
   certificateId,
   organizationName = "Organization of Marine Science Professionals",
   description = "This certificate is proudly awarded in recognition of excellence, dedication, and commitment to marine and professional development.",
@@ -83,9 +84,14 @@ export default function OceanDepthCertificate({
 
   const signatureText =
     designOverrides?.signatureText || signatoryName || "Authorized Signatory";
+
   const signatureTitle =
-    designOverrides?.signatureTitle || signatoryTitle || "OMSP Administration";
-  const signatureStyle = designOverrides?.signatureStyle || "executive";
+    designOverrides?.signatureTitle ||
+    signatoryTitle ||
+    "OMSP Administration";
+
+  const signatureStyle =
+    designOverrides?.signatureStyle || "executive";
 
   return (
     <div className="w-full overflow-x-auto rounded-2xl bg-slate-950 p-4">
@@ -171,18 +177,30 @@ export default function OceanDepthCertificate({
 
           <div className="grid w-full grid-cols-3 items-end gap-6">
             <div className="text-left text-xs text-slate-300">
-              <p className="font-semibold text-cyan-200">Certificate ID</p>
+              <p className="font-semibold text-cyan-200">
+                Certificate ID
+              </p>
               <p>{certificateId}</p>
 
-              <p className="mt-3 font-semibold text-cyan-200">Date Issued</p>
+              <p className="mt-3 font-semibold text-cyan-200">
+                Date Issued
+              </p>
               <p>{issueDate}</p>
+
+              {expiryDate && (
+                <>
+                  <p className="mt-3 font-semibold text-cyan-200">
+                    Valid Until
+                  </p>
+                  <p>{expiryDate}</p>
+                </>
+              )}
             </div>
 
             <div className="text-center">
               <p
                 className="text-5xl leading-none text-white"
                 style={getSignatureStyle(signatureStyle)}
-                
               >
                 {signatureText}
               </p>
