@@ -69,3 +69,54 @@ export function buildEmailTemplate({
   </html>
   `;
 }
+
+export function buildCertificateEmailContent({
+  recipientName,
+  certificateTitle,
+  certificateId,
+  verificationUrl,
+}: {
+  recipientName?: string;
+  certificateTitle: string;
+  certificateId: string;
+  verificationUrl?: string;
+}) {
+  return `
+    <p style="margin:0 0 16px 0;">
+      Dear ${recipientName || "Recipient"},
+    </p>
+
+    <p style="margin:0 0 16px 0;">
+      Congratulations. Your certificate titled <strong>${certificateTitle}</strong> has been issued by the Organization of Marine Science Professionals.
+    </p>
+
+    <p style="margin:0 0 16px 0;">
+      Your certificate has been attached to this email as a PDF file.
+    </p>
+
+    <p style="margin:0 0 16px 0;">
+      <strong>Certificate ID:</strong> ${certificateId}
+    </p>
+
+    ${
+      verificationUrl
+        ? `
+          <p style="margin:0 0 16px 0;">
+            You can verify the authenticity of this certificate using the link below:
+          </p>
+
+          <p style="margin:0 0 20px 0;">
+            <a href="${verificationUrl}" style="color:#0d9488; font-weight:700; text-decoration:none;">
+              Verify Certificate
+            </a>
+          </p>
+        `
+        : ""
+    }
+
+    <p style="margin:0;">
+      Warm regards,<br />
+      <strong>OMSP Team</strong>
+    </p>
+  `;
+}

@@ -2,6 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "Signatie";
+  src: url("/fonts/Signatie.otf") format("opentype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "AmsterdamHandwriting";
+  src: url("/fonts/AmsterdamHandwriting.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "BastligaOne";
+  src: url("/fonts/BastligaOne.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cintarini";
+  src: url("/fonts/Cintarini.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "OceanTrace";
+  src: url("/fonts/OceanTrace.ttf") format("truetype");
+  font-display: swap;
+}
+
 :root {
   --ocean-950: #020f1e;
   --ocean-900: #041529;
