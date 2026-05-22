@@ -6,35 +6,28 @@ function getLogoAlignment(position?: string) {
   return "justify-center";
 }
 
-function getQrPosition(position?: string) {
-  if (position === "top-left") return "absolute left-10 top-10";
-  if (position === "top-right") return "absolute right-10 top-10";
-  if (position === "bottom-left") return "absolute bottom-10 left-10";
-  return "absolute bottom-10 right-10";
-}
-
 function getSignatureStyle(style?: string): React.CSSProperties {
   if (style === "signatie" || style === "formal") {
-    return { fontFamily: "Signatie", fontSize: "22px", fontWeight: 400 };
+    return { fontFamily: "Signatie", fontSize: "28px", fontWeight: 400 };
   }
 
   if (style === "amsterdam" || style === "elegant") {
     return {
       fontFamily: "AmsterdamHandwriting",
-      fontSize: "24px",
+      fontSize: "30px",
       fontWeight: 400,
     };
   }
 
   if (style === "cintarini") {
-    return { fontFamily: "Cintarini", fontSize: "22px", fontWeight: 400 };
+    return { fontFamily: "Cintarini", fontSize: "28px", fontWeight: 400 };
   }
 
   if (style === "oceantrace") {
-    return { fontFamily: "OceanTrace", fontSize: "22px", fontWeight: 400 };
+    return { fontFamily: "OceanTrace", fontSize: "28px", fontWeight: 400 };
   }
 
-  return { fontFamily: "BastligaOne", fontSize: "20px", fontWeight: 400 };
+  return { fontFamily: "BastligaOne", fontSize: "26px", fontWeight: 400 };
 }
 
 export default function ExecutiveDistinctionCertificate({
@@ -54,26 +47,32 @@ export default function ExecutiveDistinctionCertificate({
   const logoPosition = designOverrides?.logoPosition || "top-center";
   const qrPosition = designOverrides?.qrPosition || "bottom-right";
   const showWatermark = designOverrides?.showWatermark ?? true;
-  const watermarkOpacity = designOverrides?.watermarkOpacity ?? 0.04;
+  const watermarkOpacity = designOverrides?.watermarkOpacity ?? 0.025;
 
   const signatureText =
     designOverrides?.signatureText || signatoryName || "Authorized Signatory";
+
   const signatureTitle =
     designOverrides?.signatureTitle || signatoryTitle || "OMSP Administration";
+
   const signatureStyle = designOverrides?.signatureStyle || "executive";
 
   return (
     <div className="w-full overflow-x-auto rounded-2xl bg-slate-950 p-4">
-      <div className="relative mx-auto aspect-[1.414/1] w-full max-w-5xl overflow-hidden rounded-xl border-[8px] border-[#d6b25e] bg-[#111111] shadow-2xl">
-        <div className="absolute inset-5 border border-[#d6b25e]/70" />
-        <div className="absolute inset-9 border border-white/10" />
+      <div className="relative mx-auto aspect-[1.414/1] w-full max-w-5xl overflow-hidden rounded-xl border-[6px] border-[#c9a44d] bg-[#0a0a0a] shadow-2xl">
+        
+        {/* Outer and inner frame borders */}
+        <div className="absolute inset-4 rounded-sm border border-[#c9a44d]/60 pointer-events-none" />
+        <div className="absolute inset-7 rounded-sm border border-white/8 pointer-events-none" />
 
-        <div className="absolute -left-32 -top-32 h-80 w-80 rounded-full bg-[#d6b25e]/10 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 h-80 w-80 rounded-full bg-[#d6b25e]/10 blur-3xl" />
+        {/* Subtle radial gradients for depth */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(201,164,77,0.08),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(201,164,77,0.06),_transparent_32%)] pointer-events-none" />
 
-        <div className="absolute left-0 top-0 h-full w-20 bg-gradient-to-r from-[#d6b25e]/15 to-transparent" />
-        <div className="absolute right-0 top-0 h-full w-20 bg-gradient-to-l from-[#d6b25e]/15 to-transparent" />
+        {/* Side edge lighting */}
+        <div className="absolute left-0 top-0 h-full w-20 bg-gradient-to-r from-[#c9a44d]/8 to-transparent pointer-events-none" />
+        <div className="absolute right-0 top-0 h-full w-20 bg-gradient-to-l from-[#c9a44d]/8 to-transparent pointer-events-none" />
 
+        {/* Watermark */}
         {showWatermark && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <img
@@ -85,103 +84,120 @@ export default function ExecutiveDistinctionCertificate({
           </div>
         )}
 
-        {qrPosition !== "hidden" && (
-          <div className={getQrPosition(qrPosition)}>
-            {qrCodeUrl ? (
-              <div className="rounded-lg border border-[#d6b25e]/40 bg-white p-2 shadow-xl">
-                <img
-                  src={qrCodeUrl}
-                  alt="Certificate QR Code"
-                  className="h-20 w-20"
-                />
-              </div>
-            ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-lg border border-[#d6b25e]/40 bg-white/10 text-[10px] text-[#d6b25e]">
-                QR
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="relative z-10 flex h-full flex-col items-center justify-between px-16 py-12 text-center text-white">
-          <div className="w-full">
-            <div className={`mb-4 flex ${getLogoAlignment(logoPosition)}`}>
-              <div className="rounded-full border border-[#d6b25e]/60 bg-black/30 p-3">
+        {/* Main content */}
+        <div className="relative z-10 flex h-full flex-col px-14 py-10 text-center text-white">
+          
+          {/* Header: Logo and organization */}
+          <div className="mb-4">
+            <div className={`mb-2 flex ${getLogoAlignment(logoPosition)}`}>
+              <div className="rounded-full border border-[#c9a44d]/60 bg-black/30 p-2.5 shadow-lg">
                 <img
                   src="/images/omsp-mark.png"
                   alt="OMSP Logo"
-                  className="h-14 w-14 object-contain"
+                  className="h-12 w-12 object-contain"
                 />
               </div>
             </div>
-
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#d6b25e]">
+            
+            <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-[#d6b25e]">
               {organizationName}
             </p>
+          </div>
 
-            <h1 className="mt-6 font-serif text-5xl font-bold uppercase tracking-wide text-white">
+          {/* Certificate title section */}
+          <div className="mb-5">
+            <h1 className="mt-3 font-serif text-4xl font-bold uppercase tracking-wide text-white">
               Executive Distinction
             </h1>
 
-            <p className="mt-3 text-lg font-medium text-[#d6b25e]">
+            <p className="mt-1.5 text-sm font-medium text-[#e4c36b]">
               {certificateTitle}
             </p>
           </div>
 
-          <div className="max-w-3xl">
-            <p className="text-sm uppercase tracking-[0.28em] text-white/60">
+          {/* Recipient section - centered */}
+          <div className="mx-auto max-w-2xl mb-6 flex-grow flex flex-col justify-center">
+            <p className="text-[9px] uppercase tracking-[0.3em] text-white/50">
               Distinguished recognition awarded to
             </p>
 
-            <h2 className="mt-5 font-serif text-5xl font-bold text-[#f7e3a2]">
+            <h2 className="mt-3 font-serif text-4xl font-bold text-[#f7e3a2]">
               {recipientName}
             </h2>
 
-            <div className="mx-auto mt-4 h-px w-96 bg-gradient-to-r from-transparent via-[#d6b25e] to-transparent" />
+            <div className="mx-auto mt-2 h-px w-80 bg-gradient-to-r from-transparent via-[#d6b25e] to-transparent" />
 
-            <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-slate-300">
+            <p className="mx-auto mt-4 max-w-2xl text-xs leading-5 text-slate-300">
               {description}
             </p>
           </div>
 
-          <div className="grid w-full grid-cols-3 items-end gap-6">
-            <div className="text-left text-xs text-slate-300">
-              <p className="font-semibold text-[#d6b25e]">Certificate ID</p>
-              <p>{certificateId}</p>
+          {/* Bottom section: 3-column layout */}
+          <div className="grid w-full grid-cols-3 items-end gap-4 pt-4 border-t border-[#d6b25e]/30">
+            
+            {/* Left: Certificate details */}
+            <div className="text-left text-[10px] text-slate-300">
+              <div className="space-y-2.5">
+                <div>
+                  <p className="font-semibold text-[#d6b25e] text-[9px] uppercase">Certificate ID</p>
+                  <p className="mt-0.5">{certificateId}</p>
+                </div>
 
-              <p className="mt-3 font-semibold text-[#d6b25e]">Date Issued</p>
-              <p>{issueDate}</p>
+                <div>
+                  <p className="font-semibold text-[#d6b25e] text-[9px] uppercase">Date Issued</p>
+                  <p className="mt-0.5">{issueDate}</p>
+                </div>
 
-              {expiryDate && (
-                <>
-                  <p className="mt-3 font-semibold text-[#d6b25e]">
-                    Valid Until
-                  </p>
-                  <p>{expiryDate}</p>
-                </>
-              )}
+                {expiryDate && (
+                  <div>
+                    <p className="font-semibold text-[#d6b25e] text-[9px] uppercase">Valid Until</p>
+                    <p className="mt-0.5">{expiryDate}</p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="text-center">
+            {/* Center: Signature */}
+            <div className="flex flex-col items-center">
               <p
-                className="text-5xl leading-none text-[#f7e3a2]"
+                className="text-4xl leading-none text-[#f7e3a2]"
                 style={getSignatureStyle(signatureStyle)}
               >
                 {signatureText}
               </p>
 
-              <div className="mx-auto mb-2 mt-1 h-px w-52 bg-[#d6b25e]" />
+              <div className="mx-auto mb-1 mt-1 h-px w-44 bg-[#d6b25e]" />
 
-              <p className="text-xs uppercase tracking-[0.25em] text-white/60">
+              <p className="text-[9px] uppercase tracking-[0.25em] text-white/60">
                 {signatureTitle}
               </p>
             </div>
 
-            <div />
+            {/* Right: QR Code */}
+            <div className="flex justify-end">
+              {qrPosition !== "hidden" && (
+                <>
+                  {qrCodeUrl ? (
+                    <div className="rounded-lg border border-[#d6b25e]/50 bg-white p-1.5 shadow-xl">
+                      <img
+                        src={qrCodeUrl}
+                        alt="Certificate QR Code"
+                        className="h-20 w-20"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex h-20 w-20 items-center justify-center rounded-lg border border-[#d6b25e]/50 bg-white/10 text-[9px] font-semibold text-[#d6b25e] uppercase">
+                      QR
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
+          {/* Verification text */}
           {verificationUrl && (
-            <p className="absolute bottom-4 text-[10px] tracking-wide text-white/45">
+            <p className="mt-2 text-[8px] uppercase tracking-wide text-white/40">
               Scan QR Code To Verify Authenticity
             </p>
           )}

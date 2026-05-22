@@ -163,7 +163,7 @@ export default function ClassicMaritimeCertificate({
             </p>
           </div>
 
-          <div className="grid w-full grid-cols-3 items-end gap-6">
+          <div className="grid w-full -translate-y-6 grid-cols-3 items-end gap-6">
             <div className="text-left text-xs text-slate-700">
               <p className="font-semibold">Certificate ID</p>
               <p>{certificateId}</p>

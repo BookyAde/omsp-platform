@@ -165,7 +165,7 @@ export default function PureCleanCertificate({
 
             <div className="mx-auto mt-4 h-px w-72 bg-slate-300" />
 
-            <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-slate-600">
+            <p className="mx-auto mt-6 max-h-20 max-w-2xl overflow-hidden text-base leading-7 text-slate-600">
               {description}
             </p>
           </div>
