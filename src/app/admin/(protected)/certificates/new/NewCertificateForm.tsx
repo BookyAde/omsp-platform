@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { CERTIFICATE_TEMPLATES } from "@/lib/certificates/templates";
 import CertificatePreview from "@/components/certificates/CertificatePreview";
 
@@ -19,6 +19,10 @@ export default function NewCertificateForm({ forms }: { forms: { id: string; tit
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const [selectedSubmissionIds, setSelectedSubmissionIds] = useState<string[]>([]);
   const [message, setMessage] = useState("");
+
+  // --- Search & Filter states (restored) ---
+  const [searchTerm, setSearchTerm] = useState("");
+  const [certificateFilter, setCertificateFilter] = useState("not_generated");
 
   // Settings for submission‑based certificates (full as original)
   const [submissionSettings, setSubmissionSettings] = useState({
@@ -184,6 +188,38 @@ export default function NewCertificateForm({ forms }: { forms: { id: string; tit
     } finally {
       setManualLoading(false);
     }
+  }
+
+  // Filter submissions based on search and filter state
+  const filteredSubmissions = useMemo(() => {
+    return eligibleSubmissions.filter(sub => {
+      const matchesSearch =
+        sub.recipient_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        sub.recipient_email.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesFilter =
+        certificateFilter === "all" ||
+        (certificateFilter === "generated" && sub.has_certificate) ||
+        (certificateFilter === "not_generated" && !sub.has_certificate);
+      return matchesSearch && matchesFilter;
+    });
+  }, [eligibleSubmissions, searchTerm, certificateFilter]);
+
+  const selectableFilteredSubmissions = filteredSubmissions.filter(sub => !sub.has_certificate);
+  const allFilteredSelected =
+    selectableFilteredSubmissions.length > 0 &&
+    selectableFilteredSubmissions.every(sub => selectedSubmissionIds.includes(sub.submission_id));
+
+  function toggleAllFiltered() {
+    const filteredIds = selectableFilteredSubmissions.map(s => s.submission_id);
+    if (allFilteredSelected) {
+      setSelectedSubmissionIds(prev => prev.filter(id => !filteredIds.includes(id)));
+    } else {
+      setSelectedSubmissionIds(prev => Array.from(new Set([...prev, ...filteredIds])));
+    }
+  }
+
+  async function generateAllFiltered() {
+    await generateSelected(); // current selected already includes filtered if toggle used
   }
 
   return (
@@ -371,7 +407,7 @@ export default function NewCertificateForm({ forms }: { forms: { id: string; tit
             </div>
           </div>
 
-          {/* Form selection and submissions */}
+          {/* Form selection and submissions with search & filter */}
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <h3 className="text-lg font-semibold text-white">Select Approved Form Submissions</h3>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -383,75 +419,138 @@ export default function NewCertificateForm({ forms }: { forms: { id: string; tit
                   onChange={e => setSelectedFormId(e.target.value)}
                 >
                   <option value="">Select a form</option>
-                  {forms.map(f => (
-                    <option key={f.id} value={f.id}>{f.title}</option>
-                  ))}
+                  {forms.map(f => <option key={f.id} value={f.id}>{f.title}</option>)}
+                </select>
+              </div>
+              <div>
+                <label>Search submissions</label>
+                <input
+                  type="text"
+                  className="form-input w-full"
+                  placeholder="Search by name or email"
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div>
+                <label>Certificate filter</label>
+                <select
+                  className="form-input w-full"
+                  value={certificateFilter}
+                  onChange={e => setCertificateFilter(e.target.value)}
+                >
+                  <option value="not_generated">Not generated</option>
+                  <option value="generated">Generated</option>
+                  <option value="all">All</option>
                 </select>
               </div>
             </div>
 
-            {selectedFormId && (
-              <>
-                <div className="mt-4 flex gap-3">
-                  <button
-                    onClick={generateSelected}
-                    disabled={bulkGenerating || selectedSubmissionIds.length === 0}
-                    className="btn-primary"
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={generateSelected}
+                disabled={bulkGenerating || selectedSubmissionIds.length === 0}
+                className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50"
+              >
+                {bulkGenerating ? "Generating..." : "Generate Selected"}
+              </button>
+              <button
+                type="button"
+                onClick={generateAllFiltered}
+                disabled={bulkGenerating || selectableFilteredSubmissions.length === 0}
+                className="rounded-xl bg-white/10 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {bulkGenerating ? "Generating..." : "Generate All Filtered"}
+              </button>
+              <button
+                type="button"
+                onClick={toggleAllFiltered}
+                disabled={selectableFilteredSubmissions.length === 0}
+                className="rounded-xl bg-white/10 px-5 py-3 text-sm font-semibold text-white"
+              >
+                {allFilteredSelected ? "Deselect All" : "Select All Filtered"}
+              </button>
+            </div>
+
+            <div className="mt-4 text-sm text-slate-400">
+              Showing {filteredSubmissions.length} submission(s). Selected {selectedSubmissionIds.length}.
+            </div>
+
+            <div className="mt-6 overflow-hidden rounded-2xl border border-white/10">
+              <div className="grid grid-cols-6 gap-4 border-b border-white/10 p-4 text-sm font-semibold text-slate-300">
+                <span>
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={toggleAllFiltered}
+                    disabled={selectableFilteredSubmissions.length === 0}
+                  />
+                </span>
+                <span>Name</span>
+                <span>Email</span>
+                <span>Status</span>
+                <span>Certificate</span>
+                <span>Action</span>
+              </div>
+
+              {loadingSubmissions ? (
+                <p className="p-5 text-slate-400">Loading approved submissions...</p>
+              ) : filteredSubmissions.length === 0 ? (
+                <p className="p-5 text-slate-400">
+                  No matching approved submissions found for this form.
+                </p>
+              ) : (
+                filteredSubmissions.map((submission) => (
+                  <div
+                    key={submission.submission_id}
+                    className="grid grid-cols-6 gap-4 border-b border-white/5 p-4 text-sm text-slate-300"
                   >
-                    {bulkGenerating ? "Generating..." : "Generate Selected"}
-                  </button>
-                </div>
-                <div className="mt-4 overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="border-b border-ocean-700/50">
-                      <tr className="text-left text-slate-300">
-                        <th className="p-2">Select</th><th>Name</th><th>Email</th><th>Status</th><th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {loadingSubmissions ? (
-                        <tr><td colSpan={5} className="p-4 text-center">Loading submissions...</td></tr>
-                      ) : eligibleSubmissions.length === 0 ? (
-                        <tr><td colSpan={5} className="p-4 text-center">No eligible submissions found.</td></tr>
+                    <span>
+                      <input
+                        type="checkbox"
+                        checked={selectedSubmissionIds.includes(submission.submission_id)}
+                        onChange={() => {
+                          if (submission.has_certificate) return;
+                          setSelectedSubmissionIds(prev =>
+                            prev.includes(submission.submission_id)
+                              ? prev.filter(id => id !== submission.submission_id)
+                              : [...prev, submission.submission_id]
+                          );
+                        }}
+                        disabled={submission.has_certificate}
+                      />
+                    </span>
+                    <span>{submission.recipient_name}</span>
+                    <span>{submission.recipient_email || "No email"}</span>
+                    <span>{submission.status}</span>
+                    <span>
+                      {submission.has_certificate
+                        ? submission.certificate?.certificate_id
+                        : "Not generated"}
+                    </span>
+                    <span>
+                      {submission.has_certificate && submission.certificate ? (
+                        <button
+                          onClick={() => downloadQr(submission.certificate)}
+                          className="rounded-lg bg-white/10 px-3 py-2 text-xs text-white"
+                        >
+                          Download QR
+                        </button>
                       ) : (
-                        eligibleSubmissions.map(sub => (
-                          <tr key={sub.submission_id} className="border-b border-ocean-700/30">
-                            <td className="p-2">
-                              <input
-                                type="checkbox"
-                                checked={selectedSubmissionIds.includes(sub.submission_id)}
-                                onChange={() =>
-                                  setSelectedSubmissionIds(prev =>
-                                    prev.includes(sub.submission_id)
-                                      ? prev.filter(id => id !== sub.submission_id)
-                                      : [...prev, sub.submission_id]
-                                  )
-                                }
-                                disabled={sub.has_certificate}
-                              />
-                            </td>
-                            <td>{sub.recipient_name}</td>
-                            <td>{sub.recipient_email}</td>
-                            <td>{sub.has_certificate ? "Generated" : "Pending"}</td>
-                            <td>
-                              {!sub.has_certificate && (
-                                <button
-                                  onClick={() => generateSingle(sub)}
-                                  disabled={generatingId === sub.submission_id}
-                                  className="text-cyan-400"
-                                >
-                                  {generatingId === sub.submission_id ? "Generating..." : "Generate"}
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))
+                        <button
+                          onClick={() => generateSingle(submission)}
+                          disabled={generatingId === submission.submission_id || bulkGenerating}
+                          className="rounded-lg bg-cyan-400 px-3 py-2 text-xs font-semibold text-slate-950 disabled:opacity-60"
+                        >
+                          {generatingId === submission.submission_id ? "Generating..." : "Generate"}
+                        </button>
                       )}
-                    </tbody>
-                   </table>
-                </div>
-              </>
-            )}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -577,4 +676,13 @@ export default function NewCertificateForm({ forms }: { forms: { id: string; tit
       )}
     </div>
   );
+}
+
+// Helper function to download QR (needs certificate object)
+function downloadQr(cert: any) {
+  if (!cert || !cert.qr_code_data_url) return;
+  const link = document.createElement("a");
+  link.href = cert.qr_code_data_url;
+  link.download = `${cert.certificate_id}-qr.png`;
+  link.click();
 }
