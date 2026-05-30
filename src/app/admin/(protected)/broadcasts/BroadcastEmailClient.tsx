@@ -37,30 +37,28 @@ type Result = {
 type Props = {
   forms: FormOption[];
   users?: UserOption[];
+  onSuccess?: () => void; // 👈 NEW: callback after successful send
 };
 
 export default function BroadcastEmailClient({
   forms,
   users = [],
+  onSuccess, // 👈 NEW
 }: Props) {
   const router = useRouter();
 
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
 
-  const [senderType, setSenderType] =
-    useState<SenderType>("team");
+  const [senderType, setSenderType] = useState<SenderType>("team");
 
-  const [audienceType, setAudienceType] =
-    useState<AudienceType>("users");
+  const [audienceType, setAudienceType] = useState<AudienceType>("users");
 
-  const [userAudience, setUserAudience] =
-    useState<UserAudience>("all");
+  const [userAudience, setUserAudience] = useState<UserAudience>("all");
 
   const [formId, setFormId] = useState("");
 
-  const [submissionStatus, setSubmissionStatus] =
-    useState<SubmissionStatus>("all");
+  const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>("all");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -102,9 +100,7 @@ export default function BroadcastEmailClient({
       .filter(Boolean);
   }
 
-  async function handleSubmit(
-    e: React.FormEvent<HTMLFormElement>
-  ) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     setLoading(true);
@@ -158,7 +154,6 @@ export default function BroadcastEmailClient({
           success: false,
           error: data.error || "Failed to send broadcast",
         });
-
         return;
       }
 
@@ -169,12 +164,17 @@ export default function BroadcastEmailClient({
         failed_count: data.failed_count ?? 0,
       });
 
-      router.refresh();
-
-      setSubject("");
-      setMessage("");
-      setManualEmails("");
-      setSelectedUserIds([]);
+      // 👇 NEW: if onSuccess is provided, call it and let parent handle navigation
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        // Original behaviour: clear form and refresh the page data
+        router.refresh();
+        setSubject("");
+        setMessage("");
+        setManualEmails("");
+        setSelectedUserIds([]);
+      }
     } catch {
       setResult({
         success: false,
@@ -189,26 +189,18 @@ export default function BroadcastEmailClient({
     subject.trim().length > 0 &&
     message.trim().length > 0 &&
     !loading &&
-    (
-      audienceType === "users" ||
+    (audienceType === "users" ||
       (audienceType === "form_applicants" && Boolean(formId)) ||
-      (audienceType === "selected_users" &&
-        selectedUserIds.length > 0) ||
-      (audienceType === "manual_emails" &&
-        parseManualEmails().length > 0)
-    );
+      (audienceType === "selected_users" && selectedUserIds.length > 0) ||
+      (audienceType === "manual_emails" && parseManualEmails().length > 0));
 
   return (
     <div className="glass-card mt-6 max-w-4xl p-6">
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-5"
-      >
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-slate-500">
             Subject
           </label>
-
           <input
             type="text"
             value={subject}
@@ -223,7 +215,6 @@ export default function BroadcastEmailClient({
           <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-slate-500">
             Message
           </label>
-
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -237,27 +228,14 @@ export default function BroadcastEmailClient({
           <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-slate-500">
             Send From
           </label>
-
           <select
             value={senderType}
-            onChange={(e) =>
-              setSenderType(
-                e.target.value as SenderType
-              )
-            }
+            onChange={(e) => setSenderType(e.target.value as SenderType)}
             className="form-input w-full py-2.5 text-sm"
           >
-            <option value="team">
-              OMSP Team • team@omspglobal.org
-            </option>
-
-            <option value="admin">
-              OMSP Admin • admin@omspglobal.org
-            </option>
-
-            <option value="support">
-              OMSP Support • support@omspglobal.org
-            </option>
+            <option value="team">OMSP Team • team@omspglobal.org</option>
+            <option value="admin">OMSP Admin • admin@omspglobal.org</option>
+            <option value="support">OMSP Support • support@omspglobal.org</option>
           </select>
         </div>
 
@@ -265,31 +243,15 @@ export default function BroadcastEmailClient({
           <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-slate-500">
             Audience Type
           </label>
-
           <select
             value={audienceType}
-            onChange={(e) =>
-              setAudienceType(
-                e.target.value as AudienceType
-              )
-            }
+            onChange={(e) => setAudienceType(e.target.value as AudienceType)}
             className="form-input w-full py-2.5 text-sm"
           >
-            <option value="users">
-              Registered users
-            </option>
-
-            <option value="form_applicants">
-              Form applicants
-            </option>
-
-            <option value="selected_users">
-              Selected registered users
-            </option>
-
-            <option value="manual_emails">
-              Manual email addresses
-            </option>
+            <option value="users">Registered users</option>
+            <option value="form_applicants">Form applicants</option>
+            <option value="selected_users">Selected registered users</option>
+            <option value="manual_emails">Manual email addresses</option>
           </select>
         </div>
 
@@ -298,27 +260,14 @@ export default function BroadcastEmailClient({
             <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-slate-500">
               User Audience
             </label>
-
             <select
               value={userAudience}
-              onChange={(e) =>
-                setUserAudience(
-                  e.target.value as UserAudience
-                )
-              }
+              onChange={(e) => setUserAudience(e.target.value as UserAudience)}
               className="form-input w-full py-2.5 text-sm"
             >
-              <option value="all">
-                All users
-              </option>
-
-              <option value="promotional">
-                Promotional users only
-              </option>
-
-              <option value="admins">
-                Admins only
-              </option>
+              <option value="all">All users</option>
+              <option value="promotional">Promotional users only</option>
+              <option value="admins">Admins only</option>
             </select>
           </div>
         )}
@@ -329,24 +278,15 @@ export default function BroadcastEmailClient({
               <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-slate-500">
                 Select Form
               </label>
-
               <select
                 value={formId}
-                onChange={(e) =>
-                  setFormId(e.target.value)
-                }
+                onChange={(e) => setFormId(e.target.value)}
                 className="form-input w-full py-2.5 text-sm"
                 required
               >
-                <option value="">
-                  Choose a form
-                </option>
-
+                <option value="">Choose a form</option>
                 {forms.map((form) => (
-                  <option
-                    key={form.id}
-                    value={form.id}
-                  >
+                  <option key={form.id} value={form.id}>
                     {form.title}
                   </option>
                 ))}
@@ -357,31 +297,17 @@ export default function BroadcastEmailClient({
               <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-slate-500">
                 Submission Status
               </label>
-
               <select
                 value={submissionStatus}
                 onChange={(e) =>
-                  setSubmissionStatus(
-                    e.target.value as SubmissionStatus
-                  )
+                  setSubmissionStatus(e.target.value as SubmissionStatus)
                 }
                 className="form-input w-full py-2.5 text-sm"
               >
-                <option value="all">
-                  All applicants
-                </option>
-
-                <option value="pending">
-                  Pending applicants
-                </option>
-
-                <option value="approved">
-                  Approved applicants
-                </option>
-
-                <option value="rejected">
-                  Rejected applicants
-                </option>
+                <option value="all">All applicants</option>
+                <option value="pending">Pending applicants</option>
+                <option value="approved">Approved applicants</option>
+                <option value="rejected">Rejected applicants</option>
               </select>
             </div>
           </div>
@@ -393,13 +319,10 @@ export default function BroadcastEmailClient({
               <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-slate-500">
                 Search Users
               </label>
-
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) =>
-                  setSearchTerm(e.target.value)
-                }
+                onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by name, email, or role"
                 className="form-input w-full py-2.5 text-sm"
               />
@@ -407,9 +330,7 @@ export default function BroadcastEmailClient({
 
             <div className="max-h-72 overflow-y-auto rounded-xl border border-ocean-700/50">
               {filteredUsers.length === 0 ? (
-                <div className="p-5 text-sm text-slate-500">
-                  No users found.
-                </div>
+                <div className="p-5 text-sm text-slate-500">No users found.</div>
               ) : (
                 filteredUsers.map((user) => (
                   <label
@@ -418,26 +339,16 @@ export default function BroadcastEmailClient({
                   >
                     <input
                       type="checkbox"
-                      checked={selectedUserIds.includes(
-                        user.id
-                      )}
-                      onChange={() =>
-                        toggleUser(user.id)
-                      }
+                      checked={selectedUserIds.includes(user.id)}
+                      onChange={() => toggleUser(user.id)}
                       className="h-4 w-4"
                     />
-
                     <div>
                       <p className="text-sm font-medium text-white">
-                        {user.full_name ||
-                          "Unnamed user"}
+                        {user.full_name || "Unnamed user"}
                       </p>
-
-                      <p className="text-xs text-slate-500">
-                        {user.email}
-                      </p>
+                      <p className="text-xs text-slate-500">{user.email}</p>
                     </div>
-
                     {user.role && (
                       <span className="ml-auto rounded-full bg-ocean-700/60 px-2.5 py-1 text-xs text-slate-400">
                         {user.role}
@@ -449,8 +360,7 @@ export default function BroadcastEmailClient({
             </div>
 
             <p className="text-xs text-slate-500">
-              Selected users:{" "}
-              {selectedUserIds.length}
+              Selected users: {selectedUserIds.length}
             </p>
           </div>
         )}
@@ -460,19 +370,14 @@ export default function BroadcastEmailClient({
             <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-slate-500">
               Manual Email Addresses
             </label>
-
             <textarea
               value={manualEmails}
-              onChange={(e) =>
-                setManualEmails(e.target.value)
-              }
+              onChange={(e) => setManualEmails(e.target.value)}
               placeholder="Enter emails separated by commas or new lines"
               className="form-input min-h-[140px] w-full py-2.5 text-sm"
             />
-
             <p className="mt-2 text-xs leading-5 text-slate-500">
-              You can send themed OMSP emails
-              to people who are not registered
+              You can send themed OMSP emails to people who are not registered
               on the platform.
             </p>
           </div>
@@ -480,10 +385,8 @@ export default function BroadcastEmailClient({
 
         {audienceType === "form_applicants" && (
           <div className="rounded-xl border border-teal-400/20 bg-teal-400/10 px-4 py-3 text-sm text-teal-300">
-            This will send emails to
-            applicants from the selected
-            form. The form must contain an
-            email field.
+            This will send emails to applicants from the selected form. The form
+            must contain an email field.
           </div>
         )}
 
@@ -497,19 +400,10 @@ export default function BroadcastEmailClient({
           >
             {result.success ? (
               <p>
-                Broadcast sent successfully.
-                Recipients:{" "}
-                <strong>
-                  {result.total_recipients}
-                </strong>
-                , Sent:{" "}
-                <strong>
-                  {result.sent_count}
-                </strong>
-                , Failed:{" "}
-                <strong>
-                  {result.failed_count}
-                </strong>
+                Broadcast sent successfully. Recipients:{" "}
+                <strong>{result.total_recipients}</strong>, Sent:{" "}
+                <strong>{result.sent_count}</strong>, Failed:{" "}
+                <strong>{result.failed_count}</strong>
               </p>
             ) : (
               <p>{result.error}</p>
@@ -523,9 +417,7 @@ export default function BroadcastEmailClient({
             disabled={!canSend}
             className="btn-primary px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {loading
-              ? "Sending..."
-              : "Send Broadcast"}
+            {loading ? "Sending..." : "Send Broadcast"}
           </button>
         </div>
       </form>

@@ -21,14 +21,12 @@ const validAudienceTypes: AudienceType[] = [
 ];
 
 const validUserAudiences: UserAudience[] = ["all", "promotional", "admins"];
-
 const validSubmissionStatuses: SubmissionStatus[] = [
   "all",
   "pending",
   "approved",
   "rejected",
 ];
-
 const validSenderTypes: SenderType[] = ["admin", "team", "support"];
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -227,8 +225,31 @@ export async function POST(req: NextRequest) {
     return badRequest("No valid recipient email address was found.");
   }
 
+  // ------------------------------------------------------------------
+  // 1. Pre‑fetch user IDs for all recipient emails
+  // ------------------------------------------------------------------
+  const { data: profileMatches, error: profileError } = await admin
+    .from("profiles")
+    .select("email, id")
+    .in("email", uniqueEmails);
+  if (profileError) {
+    console.error("Failed to fetch profile ids:", profileError);
+  }
+  const emailToUserId = new Map<string, string>();
+  (profileMatches ?? []).forEach((p) => {
+    if (p.email) emailToUserId.set(p.email, p.id);
+  });
+
+  // ------------------------------------------------------------------
+  // 2. Send emails and record per‑recipient status
+  // ------------------------------------------------------------------
   let sentCount = 0;
   let failedCount = 0;
+  const recipientResults: {
+    email: string;
+    userId: string | null;
+    status: string;
+  }[] = [];
 
   const cleanSubject = subject.trim();
   const cleanMessage = message.trim();
@@ -242,13 +263,25 @@ export async function POST(req: NextRequest) {
         html: emailBody,
         senderType: selectedSenderType,
       });
-
       sentCount++;
+      recipientResults.push({
+        email,
+        userId: emailToUserId.get(email) || null,
+        status: "sent",
+      });
     } catch {
       failedCount++;
+      recipientResults.push({
+        email,
+        userId: emailToUserId.get(email) || null,
+        status: "failed",
+      });
     }
   }
 
+  // ------------------------------------------------------------------
+  // 3. Create broadcast log entry
+  // ------------------------------------------------------------------
   const audienceLabel =
     selectedAudienceType === "users"
       ? selectedUserAudience
@@ -258,16 +291,43 @@ export async function POST(req: NextRequest) {
           ? `selected_users:${uniqueEmails.length}`
           : `manual_emails:${uniqueEmails.length}`;
 
-  const { error: logErr } = await admin.from("email_broadcasts").insert({
-    subject: cleanSubject,
-    message: cleanMessage,
-    audience: audienceLabel,
-    sent_count: sentCount,
-    failed_count: failedCount,
-    sender_type: selectedSenderType,
-  });
+  const { data: broadcastLog, error: logErr } = await admin
+    .from("email_broadcasts")
+    .insert({
+      subject: cleanSubject,
+      message: cleanMessage,
+      audience: audienceLabel,
+      sent_count: sentCount,
+      failed_count: failedCount,
+      sender_type: selectedSenderType,
+    })
+    .select("id")
+    .single();
 
-  if (logErr) return serverError(logErr.message);
+  if (logErr) {
+    return serverError(logErr.message);
+  }
+
+  const broadcastId = broadcastLog.id;
+
+  // ------------------------------------------------------------------
+  // 4. Store individual recipients in broadcast_recipients table
+  // ------------------------------------------------------------------
+  if (recipientResults.length > 0) {
+    const recipientRows = recipientResults.map((r) => ({
+      broadcast_id: broadcastId,
+      email: r.email,
+      user_id: r.userId,
+      status: r.status,
+    }));
+    const { error: insertRecipientsError } = await admin
+      .from("broadcast_recipients")
+      .insert(recipientRows);
+    if (insertRecipientsError) {
+      // Log error but don't fail the request – broadcast was already sent
+      console.error("Failed to store recipients:", insertRecipientsError);
+    }
+  }
 
   return NextResponse.json({
     success: true,
