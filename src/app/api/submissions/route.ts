@@ -5,6 +5,25 @@ import { sendEmail } from "@/lib/email";
 import { buildEmailTemplate } from "@/lib/email-template";
 import { TEAM_EMAIL } from "@/lib/emails";
 
+// Helper to get country from IP using ipapi.co (free, 1000 req/day)
+// Helper to get country from IP using ip-api.com (free, 45 req/min)
+async function getCountryFromIP(ip: string | null): Promise<string> {
+  if (!ip || ip === '127.0.0.1' || ip === '::1') return 'Localhost';
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=country`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data = await res.json();
+      return data.country || 'Unknown';
+    }
+  } catch {
+    // fallback
+  }
+  return 'Unknown';
+}
+
 export async function GET(req: NextRequest) {
   const authError = await requireAdmin();
   if (authError) return authError;
@@ -21,6 +40,7 @@ export async function GET(req: NextRequest) {
       id,
       submitted_at,
       ip_address,
+      country,
       form_id,
       form:forms(id, title, slug),
       values:form_submission_values(
@@ -162,7 +182,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  const forwarded = req.headers.get("x-forwarded-for");
+  const ip = forwarded ? forwarded.split(",")[0].trim() : null;
+  const country = await getCountryFromIP(ip);
   const initialStatus = form.requires_review ? "pending" : "approved";
 
   const { data: submission, error: subErr } = await admin
@@ -171,6 +193,7 @@ export async function POST(req: NextRequest) {
       form_id,
       ip_address: ip,
       status: initialStatus,
+      country,                     // <-- store country
     })
     .select()
     .single();
