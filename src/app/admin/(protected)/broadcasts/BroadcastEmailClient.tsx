@@ -37,13 +37,13 @@ type Result = {
 type Props = {
   forms: FormOption[];
   users?: UserOption[];
-  onSuccess?: () => void; // 👈 NEW: callback after successful send
+  onSuccess?: () => void;
 };
 
 export default function BroadcastEmailClient({
   forms,
   users = [],
-  onSuccess, // 👈 NEW
+  onSuccess,
 }: Props) {
   const router = useRouter();
 
@@ -58,7 +58,8 @@ export default function BroadcastEmailClient({
 
   const [formId, setFormId] = useState("");
 
-  const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>("all");
+  const [submissionStatus, setSubmissionStatus] =
+    useState<SubmissionStatus>("all");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -67,21 +68,17 @@ export default function BroadcastEmailClient({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
 
+  // 👇 NEW: attachments state
+  const [attachments, setAttachments] = useState<File[]>([]);
+
   const filteredUsers = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
-
     if (!query) return users;
-
     return users.filter((user) => {
       const name = String(user.full_name ?? "").toLowerCase();
       const email = String(user.email ?? "").toLowerCase();
       const role = String(user.role ?? "").toLowerCase();
-
-      return (
-        name.includes(query) ||
-        email.includes(query) ||
-        role.includes(query)
-      );
+      return name.includes(query) || email.includes(query) || role.includes(query);
     });
   }, [searchTerm, users]);
 
@@ -100,6 +97,11 @@ export default function BroadcastEmailClient({
       .filter(Boolean);
   }
 
+  // 👇 NEW: remove attachment by index
+  function removeAttachment(index: number) {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
@@ -107,44 +109,33 @@ export default function BroadcastEmailClient({
     setResult(null);
 
     try {
-      const payload = {
-        subject,
-        message,
-        sender_type: senderType,
-        audience_type: audienceType,
+      // Build FormData instead of JSON
+      const formData = new FormData();
+      formData.append("subject", subject);
+      formData.append("message", message);
+      formData.append("sender_type", senderType);
+      formData.append("audience_type", audienceType);
 
-        ...(audienceType === "users"
-          ? {
-              user_audience: userAudience,
-            }
-          : {}),
+      if (audienceType === "users") {
+        formData.append("user_audience", userAudience);
+      } else if (audienceType === "form_applicants") {
+        formData.append("form_id", formId);
+        formData.append("submission_status", submissionStatus);
+      } else if (audienceType === "selected_users") {
+        formData.append("selected_user_ids", JSON.stringify(selectedUserIds));
+      } else if (audienceType === "manual_emails") {
+        formData.append("manual_emails", JSON.stringify(parseManualEmails()));
+      }
 
-        ...(audienceType === "form_applicants"
-          ? {
-              form_id: formId,
-              submission_status: submissionStatus,
-            }
-          : {}),
-
-        ...(audienceType === "selected_users"
-          ? {
-              selected_user_ids: selectedUserIds,
-            }
-          : {}),
-
-        ...(audienceType === "manual_emails"
-          ? {
-              manual_emails: parseManualEmails(),
-            }
-          : {}),
-      };
+      // Append each file
+      attachments.forEach((file) => {
+        formData.append("attachments", file);
+      });
 
       const res = await fetch("/api/broadcasts", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+        // ❗ Do NOT set Content-Type header – browser will set multipart/form-data
+        body: formData,
       });
 
       const data = await res.json();
@@ -164,16 +155,15 @@ export default function BroadcastEmailClient({
         failed_count: data.failed_count ?? 0,
       });
 
-      // 👇 NEW: if onSuccess is provided, call it and let parent handle navigation
       if (onSuccess) {
         onSuccess();
       } else {
-        // Original behaviour: clear form and refresh the page data
         router.refresh();
         setSubject("");
         setMessage("");
         setManualEmails("");
         setSelectedUserIds([]);
+        setAttachments([]); // 👈 clear attachments
       }
     } catch {
       setResult({
@@ -211,6 +201,47 @@ export default function BroadcastEmailClient({
           />
         </div>
 
+        {/* 👇 NEW: Attachments UI */}
+        <div>
+          <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-slate-500">
+            Attachments (optional, max 5MB each)
+          </label>
+          <input
+            type="file"
+            multiple
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              setAttachments((prev) => [...prev, ...files]);
+            }}
+            className="form-input w-full py-2.5 text-sm"
+          />
+          {attachments.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {attachments.map((file, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-center justify-between text-sm text-slate-300"
+                >
+                  <span>
+                    {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(idx)}
+                    className="text-red-400 text-xs hover:text-red-300"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-1 text-xs text-slate-500">
+            You can attach multiple files. Total size should not exceed 20MB.
+          </p>
+        </div>
+
+        {/* Rest of the form remains exactly the same */}
         <div>
           <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-slate-500">
             Message

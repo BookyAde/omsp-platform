@@ -59,45 +59,49 @@ function cleanEmails(emails: string[]) {
   );
 }
 
+// Helper to convert a File (or Blob) to base64 string
+async function fileToBase64(file: File | Blob): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return buffer.toString("base64");
+}
+
 export async function POST(req: NextRequest) {
   const authError = await requireAdmin();
   if (authError) return authError;
 
-  let body: unknown;
-
+  // Parse multipart form data
+  let formData: FormData;
   try {
-    body = await req.json();
-  } catch {
-    return badRequest("Invalid JSON body.");
+    formData = await req.formData();
+  } catch (err) {
+    return badRequest("Invalid form data. Could not parse multipart.");
   }
 
-  const {
-    subject,
-    message,
-    audience_type,
-    user_audience,
-    form_id,
-    submission_status,
-    selected_user_ids,
-    manual_emails,
-    sender_type,
-  } = body as {
-    subject?: string;
-    message?: string;
-    audience_type?: AudienceType;
-    user_audience?: UserAudience;
-    form_id?: string;
-    submission_status?: SubmissionStatus;
-    selected_user_ids?: string[];
-    manual_emails?: string[];
-    sender_type?: SenderType;
-  };
+  // Extract fields
+  const subject = formData.get("subject")?.toString();
+  const message = formData.get("message")?.toString();
+  const audience_type = formData.get("audience_type")?.toString() as AudienceType;
+  const user_audience = formData.get("user_audience")?.toString() as UserAudience;
+  const form_id = formData.get("form_id")?.toString();
+  const submission_status = formData.get("submission_status")?.toString() as SubmissionStatus;
+  const sender_type = formData.get("sender_type")?.toString() as SenderType;
+  const selected_user_ids = JSON.parse(formData.get("selected_user_ids")?.toString() || "[]");
+  const manual_emails = JSON.parse(formData.get("manual_emails")?.toString() || "[]");
+
+  // Extract attachments (files with key "attachments")
+  const uploadedFiles: File[] = [];
+  for (const [key, value] of formData.entries()) {
+    if (key === "attachments" && value instanceof File) {
+      uploadedFiles.push(value);
+    }
+  }
 
   const selectedAudienceType: AudienceType = audience_type ?? "users";
   const selectedUserAudience: UserAudience = user_audience ?? "all";
   const selectedSubmissionStatus: SubmissionStatus = submission_status ?? "all";
   const selectedSenderType: SenderType = sender_type ?? "team";
 
+  // Validate required fields
   if (!subject?.trim() || !message?.trim()) {
     return badRequest("Subject and message are required.");
   }
@@ -142,9 +146,27 @@ export async function POST(req: NextRequest) {
     return badRequest("Please enter at least one email address.");
   }
 
+  // Validate total attachment size (e.g., 20MB)
+  const totalSize = uploadedFiles.reduce((sum, f) => sum + f.size, 0);
+  if (totalSize > 20 * 1024 * 1024) {
+    return badRequest("Total attachment size exceeds 20MB.");
+  }
+
+  // Convert attachments to base64 (required by Brevo)
+  let attachments: { name: string; content: string }[] = [];
+  if (uploadedFiles.length > 0) {
+    attachments = await Promise.all(
+      uploadedFiles.map(async (file) => ({
+        name: file.name,
+        content: await fileToBase64(file),
+      }))
+    );
+  }
+
   const admin = createAdminClient();
   let recipientEmails: string[] = [];
 
+  // ------------------- Build recipient list (unchanged) -------------------
   if (selectedAudienceType === "users") {
     let query = admin
       .from("profiles")
@@ -225,9 +247,7 @@ export async function POST(req: NextRequest) {
     return badRequest("No valid recipient email address was found.");
   }
 
-  // ------------------------------------------------------------------
-  // 1. Pre‑fetch user IDs for all recipient emails
-  // ------------------------------------------------------------------
+  // ------------------- Pre‑fetch user IDs -------------------
   const { data: profileMatches, error: profileError } = await admin
     .from("profiles")
     .select("email, id")
@@ -240,9 +260,7 @@ export async function POST(req: NextRequest) {
     if (p.email) emailToUserId.set(p.email, p.id);
   });
 
-  // ------------------------------------------------------------------
-  // 2. Send emails and record per‑recipient status
-  // ------------------------------------------------------------------
+  // ------------------- Send emails with attachments -------------------
   let sentCount = 0;
   let failedCount = 0;
   const recipientResults: {
@@ -262,6 +280,7 @@ export async function POST(req: NextRequest) {
         subject: cleanSubject,
         html: emailBody,
         senderType: selectedSenderType,
+        attachments, // pass base64 attachments
       });
       sentCount++;
       recipientResults.push({
@@ -279,9 +298,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ------------------------------------------------------------------
-  // 3. Create broadcast log entry
-  // ------------------------------------------------------------------
+  // ------------------- Log broadcast -------------------
   const audienceLabel =
     selectedAudienceType === "users"
       ? selectedUserAudience
@@ -310,9 +327,7 @@ export async function POST(req: NextRequest) {
 
   const broadcastId = broadcastLog.id;
 
-  // ------------------------------------------------------------------
-  // 4. Store individual recipients in broadcast_recipients table
-  // ------------------------------------------------------------------
+  // ------------------- Store recipients -------------------
   if (recipientResults.length > 0) {
     const recipientRows = recipientResults.map((r) => ({
       broadcast_id: broadcastId,
@@ -324,18 +339,12 @@ export async function POST(req: NextRequest) {
       .from("broadcast_recipients")
       .insert(recipientRows);
     if (insertRecipientsError) {
-      // Log error but don't fail the request – broadcast was already sent
       console.error("Failed to store recipients:", insertRecipientsError);
     }
   }
 
   return NextResponse.json({
     success: true,
-    audience_type: selectedAudienceType,
-    user_audience: selectedUserAudience,
-    form_id: form_id ?? null,
-    submission_status: selectedSubmissionStatus,
-    sender_type: selectedSenderType,
     total_recipients: uniqueEmails.length,
     sent_count: sentCount,
     failed_count: failedCount,
