@@ -10,7 +10,6 @@ function getSignatureStyle(style?: string): React.CSSProperties {
   if (style === "signatie" || style === "formal") {
     return { fontFamily: "Signatie", fontSize: "28px", fontWeight: 400 };
   }
-
   if (style === "amsterdam" || style === "elegant") {
     return {
       fontFamily: "AmsterdamHandwriting",
@@ -18,15 +17,12 @@ function getSignatureStyle(style?: string): React.CSSProperties {
       fontWeight: 400,
     };
   }
-
   if (style === "cintarini") {
     return { fontFamily: "Cintarini", fontSize: "28px", fontWeight: 400 };
   }
-
   if (style === "oceantrace") {
     return { fontFamily: "OceanTrace", fontSize: "28px", fontWeight: 400 };
   }
-
   return { fontFamily: "BastligaOne", fontSize: "26px", fontWeight: 400 };
 }
 
@@ -56,6 +52,11 @@ export default function ExecutiveDistinctionCertificate({
     designOverrides?.signatureTitle || signatoryTitle || "OMSP Administration";
 
   const signatureStyle = designOverrides?.signatureStyle || "executive";
+
+  // Use the provided certificateTitle; fallback to a generic string if empty
+  const mainTitle = certificateTitle && certificateTitle.trim() !== ""
+    ? certificateTitle
+    : "Certificate of Excellence";
 
   return (
     <div className="w-full overflow-x-auto rounded-2xl bg-slate-950 p-4">
@@ -98,35 +99,27 @@ export default function ExecutiveDistinctionCertificate({
                 />
               </div>
             </div>
-            
             <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-[#d6b25e]">
               {organizationName}
             </p>
           </div>
 
-          {/* Certificate title section */}
-          <div className="mb-5">
-            <h1 className="mt-3 font-serif text-4xl font-bold uppercase tracking-wide text-white">
-              Executive Distinction
+          {/* Dynamic main title (Certificate of ...) */}
+          <div className="mb-6">
+            <h1 className="font-serif text-5xl font-bold uppercase tracking-wide text-white">
+              {mainTitle}
             </h1>
-
-            <p className="mt-1.5 text-sm font-medium text-[#e4c36b]">
-              {certificateTitle}
-            </p>
           </div>
 
-          {/* Recipient section - centered */}
+          {/* "Presented to" / "Awarded to" line */}
           <div className="mx-auto max-w-2xl mb-6 flex-grow flex flex-col justify-center">
-            <p className="text-[9px] uppercase tracking-[0.3em] text-white/50">
-              Distinguished recognition awarded to
+            <p className="text-[10px] uppercase tracking-[0.3em] text-white/50">
+              DISTINGUISHED RECOGNITION AWARDED TO
             </p>
-
-            <h2 className="mt-3 font-serif text-4xl font-bold text-[#f7e3a2]">
+            <h2 className="mt-2 font-serif text-4xl font-bold text-[#f7e3a2]">
               {recipientName}
             </h2>
-
-            <div className="mx-auto mt-2 h-px w-80 bg-gradient-to-r from-transparent via-[#d6b25e] to-transparent" />
-
+            <div className="mx-auto mt-3 h-px w-80 bg-gradient-to-r from-transparent via-[#d6b25e] to-transparent" />
             <p className="mx-auto mt-4 max-w-2xl text-xs leading-5 text-slate-300">
               {description}
             </p>
@@ -142,12 +135,10 @@ export default function ExecutiveDistinctionCertificate({
                   <p className="font-semibold text-[#d6b25e] text-[9px] uppercase">Certificate ID</p>
                   <p className="mt-0.5">{certificateId}</p>
                 </div>
-
                 <div>
                   <p className="font-semibold text-[#d6b25e] text-[9px] uppercase">Date Issued</p>
                   <p className="mt-0.5">{issueDate}</p>
                 </div>
-
                 {expiryDate && (
                   <div>
                     <p className="font-semibold text-[#d6b25e] text-[9px] uppercase">Valid Until</p>
@@ -165,9 +156,7 @@ export default function ExecutiveDistinctionCertificate({
               >
                 {signatureText}
               </p>
-
               <div className="mx-auto mb-1 mt-1 h-px w-44 bg-[#d6b25e]" />
-
               <p className="text-[9px] uppercase tracking-[0.25em] text-white/60">
                 {signatureTitle}
               </p>

@@ -11,7 +11,6 @@ function getSignatureStyle(style?: string): React.CSSProperties {
   if (style === "signatie" || style === "formal") {
     return { fontFamily: "Signatie", fontSize: "22px", fontWeight: 400 };
   }
-
   if (style === "amsterdam" || style === "elegant") {
     return {
       fontFamily: "AmsterdamHandwriting",
@@ -19,15 +18,12 @@ function getSignatureStyle(style?: string): React.CSSProperties {
       fontWeight: 400,
     };
   }
-
   if (style === "cintarini") {
     return { fontFamily: "Cintarini", fontSize: "22px", fontWeight: 400 };
   }
-
   if (style === "oceantrace") {
     return { fontFamily: "OceanTrace", fontSize: "22px", fontWeight: 400 };
   }
-
   return { fontFamily: "BastligaOne", fontSize: "20px", fontWeight: 400 };
 }
 
@@ -51,11 +47,14 @@ export default function OMSPMembershipCertificate({
 
   const signatureText =
     designOverrides?.signatureText || signatoryName || "Authorized Signatory";
-
   const signatureTitle =
     designOverrides?.signatureTitle || signatoryTitle || "OMSP Administration";
-
   const signatureStyle = designOverrides?.signatureStyle || "executive";
+
+  // Use the provided certificateTitle; fallback to a generic string if empty
+  const mainTitle = certificateTitle && certificateTitle.trim() !== ""
+    ? certificateTitle
+    : "Membership Certificate";
 
   return (
     <div className="w-full overflow-x-auto rounded-2xl bg-slate-100 p-4">
@@ -104,9 +103,7 @@ export default function OMSPMembershipCertificate({
             <div className="rotate-[-90deg] whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.32em]">
               OMSP Membership
             </div>
-
             <div className="h-16 w-px bg-white/40" />
-
             <div className="rotate-[-90deg] whitespace-nowrap text-[10px] uppercase tracking-[0.24em] text-cyan-100">
               Verified
             </div>
@@ -119,13 +116,10 @@ export default function OMSPMembershipCertificate({
                   {organizationName}
                 </p>
 
+                {/* Dynamic main title */}
                 <h1 className="mt-3 font-serif text-4xl font-bold text-cyan-950">
-                  Membership Certificate
+                  {mainTitle}
                 </h1>
-
-                <p className="mt-2 text-sm font-medium text-slate-600">
-                  {certificateTitle}
-                </p>
               </div>
 
               <div className="rounded-full border border-cyan-900/15 bg-white p-3 shadow">
@@ -196,9 +190,7 @@ export default function OMSPMembershipCertificate({
                 >
                   {signatureText}
                 </p>
-
                 <div className="mx-auto mb-2 mt-1 h-px w-48 bg-cyan-900" />
-
                 <p className="text-xs uppercase tracking-widest text-slate-500">
                   {signatureTitle}
                 </p>

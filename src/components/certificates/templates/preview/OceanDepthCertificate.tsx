@@ -27,7 +27,6 @@ function getSignatureStyle(style?: string): React.CSSProperties {
       lineHeight: 1,
     };
   }
-
   if (style === "amsterdam" || style === "elegant") {
     return {
       fontFamily: "AmsterdamHandwriting",
@@ -36,7 +35,6 @@ function getSignatureStyle(style?: string): React.CSSProperties {
       lineHeight: 1,
     };
   }
-
   if (style === "cintarini") {
     return {
       fontFamily: "Cintarini",
@@ -45,7 +43,6 @@ function getSignatureStyle(style?: string): React.CSSProperties {
       lineHeight: 1,
     };
   }
-
   if (style === "oceantrace") {
     return {
       fontFamily: "OceanTrace",
@@ -54,7 +51,6 @@ function getSignatureStyle(style?: string): React.CSSProperties {
       lineHeight: 1,
     };
   }
-
   return {
     fontFamily: "BastligaOne",
     fontSize: "20px",
@@ -90,8 +86,12 @@ export default function OceanDepthCertificate({
     signatoryTitle ||
     "OMSP Administration";
 
-  const signatureStyle =
-    designOverrides?.signatureStyle || "executive";
+  const signatureStyle = designOverrides?.signatureStyle || "executive";
+
+  // Use the provided certificateTitle; fallback to a generic string if empty
+  const mainTitle = certificateTitle && certificateTitle.trim() !== ""
+    ? certificateTitle
+    : "Certificate of Excellence";
 
   return (
     <div className="w-full overflow-x-auto rounded-2xl bg-slate-950 p-4">
@@ -150,13 +150,10 @@ export default function OceanDepthCertificate({
               {organizationName}
             </p>
 
+            {/* Dynamic main title (Certificate of ...) */}
             <h1 className="mt-6 font-serif text-5xl font-bold uppercase tracking-wide text-white">
-              Certificate
+              {mainTitle}
             </h1>
-
-            <p className="mt-3 text-lg font-medium text-cyan-200">
-              {certificateTitle}
-            </p>
           </div>
 
           <div className="max-w-3xl">
@@ -177,21 +174,15 @@ export default function OceanDepthCertificate({
 
           <div className="grid w-full -translate-y-6 grid-cols-3 items-end gap-6">
             <div className="text-left text-xs text-slate-300">
-              <p className="font-semibold text-cyan-200">
-                Certificate ID
-              </p>
+              <p className="font-semibold text-cyan-200">Certificate ID</p>
               <p>{certificateId}</p>
 
-              <p className="mt-3 font-semibold text-cyan-200">
-                Date Issued
-              </p>
+              <p className="mt-3 font-semibold text-cyan-200">Date Issued</p>
               <p>{issueDate}</p>
 
               {expiryDate && (
                 <>
-                  <p className="mt-3 font-semibold text-cyan-200">
-                    Valid Until
-                  </p>
+                  <p className="mt-3 font-semibold text-cyan-200">Valid Until</p>
                   <p>{expiryDate}</p>
                 </>
               )}

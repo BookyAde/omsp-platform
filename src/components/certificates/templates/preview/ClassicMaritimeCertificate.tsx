@@ -27,7 +27,6 @@ function getSignatureStyle(style?: string): React.CSSProperties {
       lineHeight: 1,
     };
   }
-
   if (style === "amsterdam" || style === "elegant") {
     return {
       fontFamily: "AmsterdamHandwriting",
@@ -36,7 +35,6 @@ function getSignatureStyle(style?: string): React.CSSProperties {
       lineHeight: 1,
     };
   }
-
   if (style === "cintarini") {
     return {
       fontFamily: "Cintarini",
@@ -45,7 +43,6 @@ function getSignatureStyle(style?: string): React.CSSProperties {
       lineHeight: 1,
     };
   }
-
   if (style === "oceantrace") {
     return {
       fontFamily: "OceanTrace",
@@ -54,7 +51,6 @@ function getSignatureStyle(style?: string): React.CSSProperties {
       lineHeight: 1,
     };
   }
-
   return {
     fontFamily: "BastligaOne",
     fontSize: "20px",
@@ -87,6 +83,11 @@ export default function ClassicMaritimeCertificate({
   const signatureTitle =
     designOverrides?.signatureTitle || signatoryTitle || "OMSP Administration";
   const signatureStyle = designOverrides?.signatureStyle || "executive";
+
+  // Use the provided certificateTitle; fallback to a generic string if empty
+  const mainTitle = certificateTitle && certificateTitle.trim() !== ""
+    ? certificateTitle
+    : "Certificate of Excellence";
 
   return (
     <div className="w-full overflow-x-auto rounded-2xl bg-slate-100 p-4">
@@ -140,13 +141,10 @@ export default function ClassicMaritimeCertificate({
               {organizationName}
             </p>
 
+            {/* Dynamic main title (Certificate of ...) */}
             <h1 className="mt-6 font-serif text-5xl font-bold uppercase tracking-wide text-slate-900">
-              Certificate
+              {mainTitle}
             </h1>
-
-            <p className="mt-2 text-lg font-medium text-amber-700">
-              {certificateTitle}
-            </p>
           </div>
 
           <div className="max-w-3xl">

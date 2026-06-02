@@ -311,51 +311,21 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
-
-  membershipInfoGrid: {
-    display: "flex",
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 22,
-    marginBottom: 18,
-  },
-  membershipInfoCard: {
-    width: 128,
-    border: "1px solid #dbeafe",
-    backgroundColor: "#ffffff",
-    padding: 9,
-    marginHorizontal: 4,
-    textAlign: "left",
-  },
-  membershipInfoLabel: {
-    fontSize: 8,
-    fontWeight: "bold",
-    color: "#164e63",
-    marginBottom: 4,
-  },
-  membershipInfoValue: {
-    fontSize: 8,
-    color: "#475569",
-  },
 });
 
 function getSignatureFontStyle(style?: string) {
   if (style === "signatie" || style === "formal") {
     return { fontFamily: "Signatie", fontSize: 22 };
   }
-
   if (style === "amsterdam" || style === "elegant") {
     return { fontFamily: "AmsterdamHandwriting", fontSize: 24 };
   }
-
   if (style === "cintarini") {
     return { fontFamily: "Cintarini", fontSize: 22 };
   }
-
   if (style === "oceantrace") {
     return { fontFamily: "OceanTrace", fontSize: 22 };
   }
-
   return { fontFamily: "BastligaOne", fontSize: 22 };
 }
 
@@ -409,7 +379,6 @@ function SignatureBlock({
       >
         {signatureText}
       </Text>
-
       <View
         style={[
           styles.signatureLine,
@@ -459,32 +428,26 @@ function Footer({
         <Text style={[styles.metaLabel, { color: labelColor }]}>
           Certificate ID
         </Text>
-
         <Text style={[styles.metaValue, { color: valueColor }]}>
           {certificateId}
         </Text>
-
         <Text style={[styles.metaLabel, { color: labelColor }]}>
           Date Issued
         </Text>
-
         <Text style={[styles.metaValue, { color: valueColor }]}>
           {issueDate}
         </Text>
-
         {expiryDate && (
           <>
             <Text style={[styles.metaLabel, { color: labelColor }]}>
               Valid Until
             </Text>
-
             <Text style={[styles.metaValue, { color: valueColor }]}>
               {expiryDate}
             </Text>
           </>
         )}
       </View>
-
       <SignatureBlock
         signatureText={signatureText}
         signatureTitle={signatureTitle}
@@ -493,13 +456,16 @@ function Footer({
         lineColor={signatureLineColor}
         titleColor={signatureTitleColor}
       />
-
       <QrBlock qrCodeDataUrl={qrCodeDataUrl} borderColor={qrBorderColor} />
     </View>
   );
 }
 
+// ------------------------------------------------------------------
+// Classic Maritime PDF
+// ------------------------------------------------------------------
 function ClassicMaritimePDF(props: RenderProps) {
+  const title = props.certificateTitle?.trim() || "Certificate of Excellence";
   return (
     <Page size="A4" orientation="landscape" style={styles.pageClassic}>
       <View style={styles.classicCanvas}>
@@ -509,36 +475,24 @@ function ClassicMaritimePDF(props: RenderProps) {
             style={[styles.watermark, { opacity: props.watermarkOpacity }]}
           />
         )}
-
         <View style={styles.classicInner}>
           <Image src={OMSP_LOGO_URL} style={styles.logo} />
-
           <Text style={[styles.org, { color: "#334155" }]}>
             {props.organizationName}
           </Text>
-
           <Text style={[styles.heading, { color: "#0f172a" }]}>
-            Certificate
+            {title}
           </Text>
-
-          <Text style={[styles.title, { color: "#b45309" }]}>
-            {props.certificateTitle}
-          </Text>
-
           <Text style={[styles.presented, { color: "#475569" }]}>
             Presented to
           </Text>
-
           <Text style={[styles.recipient, { color: "#0f172a" }]}>
             {props.recipientName}
           </Text>
-
           <View style={[styles.recipientLine, { backgroundColor: "#d97706" }]} />
-
           <Text style={[styles.description, { color: "#334155" }]}>
             {props.finalDescription}
           </Text>
-
           <Footer
             certificateId={props.certificateId}
             issueDate={props.issueDate}
@@ -554,7 +508,6 @@ function ClassicMaritimePDF(props: RenderProps) {
             signatureTitleColor="#475569"
             qrBorderColor="#cbd5e1"
           />
-
           {props.verificationUrl && (
             <Text style={[styles.verify, { color: "#64748b" }]}>
               Scan QR Code To Verify Authenticity
@@ -566,7 +519,11 @@ function ClassicMaritimePDF(props: RenderProps) {
   );
 }
 
+// ------------------------------------------------------------------
+// Pure Clean PDF
+// ------------------------------------------------------------------
 function PureCleanPDF(props: RenderProps) {
+  const title = props.certificateTitle?.trim() || "Certificate of Recognition";
   return (
     <Page size="A4" orientation="landscape" style={styles.pagePure}>
       <View style={styles.pureCanvas}>
@@ -579,41 +536,29 @@ function PureCleanPDF(props: RenderProps) {
             ]}
           />
         )}
-
         <View style={styles.pureInner}>
           <Image src={OMSP_LOGO_URL} style={styles.logo} />
-
           <Text style={[styles.org, { color: "#64748b" }]}>
             {props.organizationName}
           </Text>
-
           <Text
             style={[
               styles.heading,
               { color: "#111827", textTransform: "none", fontSize: 42 },
             ]}
           >
-            Certificate of Recognition
+            {title}
           </Text>
-
-          <Text style={[styles.title, { color: "#64748b", marginBottom: 58 }]}>
-            {props.certificateTitle}
-          </Text>
-
           <Text style={[styles.presented, { color: "#94a3b8" }]}>
             Awarded to
           </Text>
-
           <Text style={[styles.recipient, { color: "#111827" }]}>
             {props.recipientName}
           </Text>
-
           <View style={[styles.recipientLine, { backgroundColor: "#cbd5e1" }]} />
-
           <Text style={[styles.description, { color: "#475569" }]}>
             {props.finalDescription}
           </Text>
-
           <Footer
             certificateId={props.certificateId}
             issueDate={props.issueDate}
@@ -629,7 +574,6 @@ function PureCleanPDF(props: RenderProps) {
             signatureTitleColor="#64748b"
             qrBorderColor="#e2e8f0"
           />
-
           {props.verificationUrl && (
             <Text style={[styles.verify, { color: "#94a3b8" }]}>
               Scan QR Code To Verify Authenticity
@@ -641,7 +585,11 @@ function PureCleanPDF(props: RenderProps) {
   );
 }
 
+// ------------------------------------------------------------------
+// Ocean Depth PDF
+// ------------------------------------------------------------------
 function OceanDepthPDF(props: RenderProps) {
+  const title = props.certificateTitle?.trim() || "Certificate of Excellence";
   return (
     <Page size="A4" orientation="landscape" style={styles.pageOcean}>
       <View style={styles.oceanCanvas}>
@@ -660,35 +608,24 @@ function OceanDepthPDF(props: RenderProps) {
             ]}
           />
         )}
-
         <View style={styles.oceanInner}>
           <Image
             src={OMSP_LOGO_URL}
             style={[styles.logo, { width: 62, height: 62 }]}
           />
-
           <Text style={[styles.org, { color: "#bae6fd" }]}>
             {props.organizationName}
           </Text>
-
           <Text style={[styles.heading, { color: "#ffffff", fontSize: 50 }]}>
-            Certificate
+            {title}
           </Text>
-
-          <Text style={[styles.title, { color: "#a5f3fc", marginBottom: 62 }]}>
-            {props.certificateTitle}
-          </Text>
-
           <Text style={[styles.presented, { color: "#bae6fd" }]}>
             Proudly Presented To
           </Text>
-
           <Text style={[styles.recipient, { color: "#e0f2fe" }]}>
             {props.recipientName}
           </Text>
-
           <View style={[styles.recipientLine, { backgroundColor: "#67e8f9" }]} />
-
           <Text
             style={[
               styles.description,
@@ -697,7 +634,6 @@ function OceanDepthPDF(props: RenderProps) {
           >
             {props.finalDescription}
           </Text>
-
           <Footer
             certificateId={props.certificateId}
             issueDate={props.issueDate}
@@ -713,7 +649,6 @@ function OceanDepthPDF(props: RenderProps) {
             signatureTitleColor="#bae6fd"
             qrBorderColor="#bae6fd"
           />
-
           {props.verificationUrl && (
             <Text style={[styles.verify, { color: "#bae6fd" }]}>
               Scan QR Code To Verify Authenticity
@@ -725,7 +660,11 @@ function OceanDepthPDF(props: RenderProps) {
   );
 }
 
+// ------------------------------------------------------------------
+// Executive Distinction PDF
+// ------------------------------------------------------------------
 function ExecutiveDistinctionPDF(props: RenderProps) {
+  const title = props.certificateTitle?.trim() || "Executive Distinction";
   return (
     <Page size="A4" orientation="landscape" style={styles.pageExecutive}>
       <View style={styles.executiveCanvas}>
@@ -744,39 +683,28 @@ function ExecutiveDistinctionPDF(props: RenderProps) {
             ]}
           />
         )}
-
         <View style={styles.executiveInner}>
           <View style={styles.logoRing}>
             <Image src={OMSP_LOGO_URL} style={styles.logoInRing} />
           </View>
-
           <Text style={[styles.org, { color: "#d6b25e" }]}>
             {props.organizationName}
           </Text>
-
           <Text
             style={[
               styles.heading,
               { color: "#ffffff", fontSize: 48, textTransform: "none" },
             ]}
           >
-            Executive Distinction
+            {title}
           </Text>
-
-          <Text style={[styles.title, { color: "#d6b25e", marginBottom: 62 }]}>
-            {props.certificateTitle}
-          </Text>
-
           <Text style={[styles.presented, { color: "#cbd5e1" }]}>
             Distinguished Recognition Awarded To
           </Text>
-
           <Text style={[styles.recipient, { color: "#f7e3a2" }]}>
             {props.recipientName}
           </Text>
-
           <View style={[styles.recipientLine, { backgroundColor: "#d6b25e" }]} />
-
           <Text
             style={[
               styles.description,
@@ -785,7 +713,6 @@ function ExecutiveDistinctionPDF(props: RenderProps) {
           >
             {props.finalDescription}
           </Text>
-
           <Footer
             certificateId={props.certificateId}
             issueDate={props.issueDate}
@@ -801,7 +728,6 @@ function ExecutiveDistinctionPDF(props: RenderProps) {
             signatureTitleColor="#cbd5e1"
             qrBorderColor="#d6b25e"
           />
-
           {props.verificationUrl && (
             <Text style={[styles.verify, { color: "#cbd5e1" }]}>
               Scan QR Code To Verify Authenticity
@@ -813,7 +739,11 @@ function ExecutiveDistinctionPDF(props: RenderProps) {
   );
 }
 
+// ------------------------------------------------------------------
+// OMSP Membership PDF
+// ------------------------------------------------------------------
 function OMSPMembershipPDF(props: RenderProps) {
+  const title = props.certificateTitle?.trim() || "Membership Certificate";
   return (
     <Page size="A4" orientation="landscape" style={styles.pageMembership}>
       <View style={styles.membershipCanvas}>
@@ -837,7 +767,6 @@ function OMSPMembershipPDF(props: RenderProps) {
           >
             OMSP
           </Text>
-
           <View
             style={{
               width: 1,
@@ -845,7 +774,6 @@ function OMSPMembershipPDF(props: RenderProps) {
               backgroundColor: "rgba(255,255,255,0.35)",
             }}
           />
-
           <Text
             style={{
               color: "#cffafe",
@@ -883,7 +811,6 @@ function OMSPMembershipPDF(props: RenderProps) {
               }}
             />
           )}
-
           <View
             style={{
               position: "absolute",
@@ -897,13 +824,9 @@ function OMSPMembershipPDF(props: RenderProps) {
           >
             <Image
               src={OMSP_LOGO_URL}
-              style={{
-                width: 52,
-                height: 52,
-              }}
+              style={{ width: 52, height: 52 }}
             />
           </View>
-
           <Text
             style={{
               fontSize: 9,
@@ -915,7 +838,6 @@ function OMSPMembershipPDF(props: RenderProps) {
           >
             {props.organizationName}
           </Text>
-
           <Text
             style={{
               marginTop: 22,
@@ -924,19 +846,8 @@ function OMSPMembershipPDF(props: RenderProps) {
               fontFamily: "Times-Bold",
             }}
           >
-            Membership Certificate
+            {title}
           </Text>
-
-          <Text
-            style={{
-              marginTop: 4,
-              fontSize: 14,
-              color: "#64748b",
-            }}
-          >
-            {props.certificateTitle}
-          </Text>
-
           <Text
             style={{
               marginTop: 34,
@@ -948,7 +859,6 @@ function OMSPMembershipPDF(props: RenderProps) {
           >
             This Certifies That
           </Text>
-
           <Text
             style={{
               marginTop: 12,
@@ -959,7 +869,6 @@ function OMSPMembershipPDF(props: RenderProps) {
           >
             {props.recipientName}
           </Text>
-
           <View
             style={{
               alignSelf: "center",
@@ -969,7 +878,6 @@ function OMSPMembershipPDF(props: RenderProps) {
               marginTop: 10,
             }}
           />
-
           <Text
             style={{
               marginTop: 20,
@@ -989,131 +897,24 @@ function OMSPMembershipPDF(props: RenderProps) {
               justifyContent: "center",
             }}
           >
-            <View
-              style={{
-                width: 120,
-                backgroundColor: "#ffffff",
-                border: "1px solid #dbeafe",
-                borderRadius: 8,
-                padding: 10,
-                marginHorizontal: 4,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 8,
-                  fontWeight: "bold",
-                  color: "#164e63",
-                  marginBottom: 4,
-                }}
-              >
-                Member ID
-              </Text>
-
-              <Text
-                style={{
-                  fontSize: 8,
-                  color: "#475569",
-                }}
-              >
-                {props.certificateId}
-              </Text>
+            <View style={{ width: 120, backgroundColor: "#ffffff", border: "1px solid #dbeafe", borderRadius: 8, padding: 10, marginHorizontal: 4 }}>
+              <Text style={{ fontSize: 8, fontWeight: "bold", color: "#164e63", marginBottom: 4 }}>Member ID</Text>
+              <Text style={{ fontSize: 8, color: "#475569" }}>{props.certificateId}</Text>
             </View>
-
-            <View
-              style={{
-                width: 120,
-                backgroundColor: "#ffffff",
-                border: "1px solid #dbeafe",
-                borderRadius: 8,
-                padding: 10,
-                marginHorizontal: 4,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 8,
-                  fontWeight: "bold",
-                  color: "#164e63",
-                  marginBottom: 4,
-                }}
-              >
-                Issue Date
-              </Text>
-
-              <Text
-                style={{
-                  fontSize: 8,
-                  color: "#475569",
-                }}
-              >
-                {props.issueDate}
-              </Text>
+            <View style={{ width: 120, backgroundColor: "#ffffff", border: "1px solid #dbeafe", borderRadius: 8, padding: 10, marginHorizontal: 4 }}>
+              <Text style={{ fontSize: 8, fontWeight: "bold", color: "#164e63", marginBottom: 4 }}>Issue Date</Text>
+              <Text style={{ fontSize: 8, color: "#475569" }}>{props.issueDate}</Text>
             </View>
-
             {props.expiryDate && (
-              <View
-                style={{
-                  width: 120,
-                  backgroundColor: "#ffffff",
-                  border: "1px solid #dbeafe",
-                  borderRadius: 8,
-                  padding: 10,
-                  marginHorizontal: 4,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 8,
-                    fontWeight: "bold",
-                    color: "#164e63",
-                    marginBottom: 4,
-                  }}
-                >
-                  Valid Until
-                </Text>
-
-                <Text
-                  style={{
-                    fontSize: 8,
-                    color: "#475569",
-                  }}
-                >
-                  {props.expiryDate}
-                </Text>
+              <View style={{ width: 120, backgroundColor: "#ffffff", border: "1px solid #dbeafe", borderRadius: 8, padding: 10, marginHorizontal: 4 }}>
+                <Text style={{ fontSize: 8, fontWeight: "bold", color: "#164e63", marginBottom: 4 }}>Valid Until</Text>
+                <Text style={{ fontSize: 8, color: "#475569" }}>{props.expiryDate}</Text>
               </View>
             )}
-
-            <View
-              style={{
-                width: 120,
-                backgroundColor: "#ffffff",
-                border: "1px solid #dbeafe",
-                borderRadius: 8,
-                padding: 10,
-                marginHorizontal: 4,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 8,
-                  fontWeight: "bold",
-                  color: "#164e63",
-                  marginBottom: 4,
-                }}
-              >
-                Status
-              </Text>
-
-              <Text
-                style={{
-                  fontSize: 8,
-                  color: "#475569",
-                }}
-              >
-                {props.expiryDate
-                  ? "Verified Active Member"
-                  : "Verified Member"}
+            <View style={{ width: 120, backgroundColor: "#ffffff", border: "1px solid #dbeafe", borderRadius: 8, padding: 10, marginHorizontal: 4 }}>
+              <Text style={{ fontSize: 8, fontWeight: "bold", color: "#164e63", marginBottom: 4 }}>Status</Text>
+              <Text style={{ fontSize: 8, color: "#475569" }}>
+                {props.expiryDate ? "Verified Active Member" : "Verified Member"}
               </Text>
             </View>
           </View>
@@ -1127,27 +928,9 @@ function OMSPMembershipPDF(props: RenderProps) {
             }}
           >
             <View style={{ width: 150 }}>
-              <Text
-                style={{
-                  fontSize: 8,
-                  fontWeight: "bold",
-                  color: "#164e63",
-                  marginBottom: 3,
-                }}
-              >
-                Verification ID
-              </Text>
-
-              <Text
-                style={{
-                  fontSize: 8,
-                  color: "#64748b",
-                }}
-              >
-                {props.certificateId}
-              </Text>
+              <Text style={{ fontSize: 8, fontWeight: "bold", color: "#164e63", marginBottom: 3 }}>Verification ID</Text>
+              <Text style={{ fontSize: 8, color: "#64748b" }}>{props.certificateId}</Text>
             </View>
-
             <SignatureBlock
               signatureText={props.signatureText}
               signatureTitle={props.signatureTitle}
@@ -1156,13 +939,8 @@ function OMSPMembershipPDF(props: RenderProps) {
               lineColor="#164e63"
               titleColor="#64748b"
             />
-
-            <QrBlock
-              qrCodeDataUrl={props.qrCodeDataUrl}
-              borderColor="#164e63"
-            />
+            <QrBlock qrCodeDataUrl={props.qrCodeDataUrl} borderColor="#164e63" />
           </View>
-
           {props.verificationUrl && (
             <Text
               style={{
@@ -1220,20 +998,14 @@ export default function CertificatePDFDocument({
 }: CertificatePDFProps) {
   const showWatermark = designOverrides?.showWatermark ?? true;
   const watermarkOpacity = designOverrides?.watermarkOpacity ?? 0.05;
-
-  const signatureText =
-    designOverrides?.signatureText || signatoryName || "OMSP Administration";
-
-  const signatureTitle =
-    designOverrides?.signatureTitle || signatoryTitle || "Authorized Signatory";
-
+  const signatureText = designOverrides?.signatureText || signatoryName || "OMSP Administration";
+  const signatureTitle = designOverrides?.signatureTitle || signatoryTitle || "Authorized Signatory";
   const signatureStyle = designOverrides?.signatureStyle || "bastliga";
-
   const finalDescription = designOverrides?.description || description;
 
   const props: RenderProps = {
     recipientName,
-    certificateTitle,
+    certificateTitle: certificateTitle || "", // will be handled per template with fallback
     certificateId,
     issueDate,
     expiryDate,
@@ -1250,39 +1022,15 @@ export default function CertificatePDFDocument({
 
   switch (templateId) {
     case "pure-clean":
-      return (
-        <Document>
-          <PureCleanPDF {...props} />
-        </Document>
-      );
-
+      return <Document><PureCleanPDF {...props} /></Document>;
     case "ocean-depth":
-      return (
-        <Document>
-          <OceanDepthPDF {...props} />
-        </Document>
-      );
-
+      return <Document><OceanDepthPDF {...props} /></Document>;
     case "executive-distinction":
-      return (
-        <Document>
-          <ExecutiveDistinctionPDF {...props} />
-        </Document>
-      );
-
+      return <Document><ExecutiveDistinctionPDF {...props} /></Document>;
     case "omsp-membership":
-      return (
-        <Document>
-          <OMSPMembershipPDF {...props} />
-        </Document>
-      );
-
+      return <Document><OMSPMembershipPDF {...props} /></Document>;
     case "classic-maritime":
     default:
-      return (
-        <Document>
-          <ClassicMaritimePDF {...props} />
-        </Document>
-      );
+      return <Document><ClassicMaritimePDF {...props} /></Document>;
   }
 }

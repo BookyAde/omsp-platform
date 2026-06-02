@@ -27,7 +27,6 @@ function getSignatureStyle(style?: string): React.CSSProperties {
       lineHeight: 1,
     };
   }
-
   if (style === "amsterdam" || style === "elegant") {
     return {
       fontFamily: "AmsterdamHandwriting",
@@ -36,7 +35,6 @@ function getSignatureStyle(style?: string): React.CSSProperties {
       lineHeight: 1,
     };
   }
-
   if (style === "cintarini") {
     return {
       fontFamily: "Cintarini",
@@ -45,7 +43,6 @@ function getSignatureStyle(style?: string): React.CSSProperties {
       lineHeight: 1,
     };
   }
-
   if (style === "oceantrace") {
     return {
       fontFamily: "OceanTrace",
@@ -54,7 +51,6 @@ function getSignatureStyle(style?: string): React.CSSProperties {
       lineHeight: 1,
     };
   }
-
   return {
     fontFamily: "BastligaOne",
     fontSize: "20px",
@@ -90,16 +86,18 @@ export default function PureCleanCertificate({
     signatoryTitle ||
     "OMSP Administration";
 
-  const signatureStyle =
-    designOverrides?.signatureStyle || "executive";
+  const signatureStyle = designOverrides?.signatureStyle || "executive";
+
+  // Use the provided certificateTitle; fallback to a generic string if empty
+  const mainTitle = certificateTitle && certificateTitle.trim() !== ""
+    ? certificateTitle
+    : "Certificate of Recognition";
 
   return (
     <div className="w-full overflow-x-auto rounded-2xl bg-slate-100 p-4">
       <div className="relative mx-auto aspect-[1.414/1] w-full max-w-5xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
         <div className="absolute inset-6 rounded-lg border border-slate-200" />
-
         <div className="absolute left-10 top-10 h-24 w-24 rounded-full border border-slate-200" />
-
         <div className="absolute bottom-10 right-10 h-24 w-24 rounded-full border border-slate-200" />
 
         {showWatermark && (
@@ -145,13 +143,10 @@ export default function PureCleanCertificate({
               {organizationName}
             </p>
 
+            {/* Dynamic main title */}
             <h1 className="mt-6 font-serif text-5xl font-bold text-slate-900">
-              Certificate of Recognition
+              {mainTitle}
             </h1>
-
-            <p className="mt-3 text-base font-medium text-slate-500">
-              {certificateTitle}
-            </p>
           </div>
 
           <div className="max-w-3xl">
@@ -172,24 +167,15 @@ export default function PureCleanCertificate({
 
           <div className="grid w-full grid-cols-3 items-end gap-6">
             <div className="text-left text-xs text-slate-500">
-              <p className="font-semibold text-slate-700">
-                Certificate ID
-              </p>
-
+              <p className="font-semibold text-slate-700">Certificate ID</p>
               <p>{certificateId}</p>
 
-              <p className="mt-3 font-semibold text-slate-700">
-                Date Issued
-              </p>
-
+              <p className="mt-3 font-semibold text-slate-700">Date Issued</p>
               <p>{issueDate}</p>
 
               {expiryDate && (
                 <>
-                  <p className="mt-3 font-semibold text-slate-700">
-                    Valid Until
-                  </p>
-
+                  <p className="mt-3 font-semibold text-slate-700">Valid Until</p>
                   <p>{expiryDate}</p>
                 </>
               )}
