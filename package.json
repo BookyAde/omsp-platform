@@ -10,18 +10,22 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.80",
+    "@google/generative-ai": "^0.24.1",
     "@react-pdf/renderer": "^4.5.1",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.106.2",
     "autoprefixer": "^10.5.0",
     "dotenv": "^17.4.2",
+    "framer-motion": "^12.40.0",
+    "lucide-react": "^1.17.0",
     "next": "14.2.29",
     "qrcode": "^1.5.4",
     "react": "^18",
     "react-dom": "^18",
     "recharts": "^3.8.1",
     "sib-api-v3-sdk": "^8.5.0",
-    "zod": "^3.24.3"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^20",

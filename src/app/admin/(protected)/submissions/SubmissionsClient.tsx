@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase";
 import { formatDateTime, objectsToCSV, downloadCSV } from "@/lib/utils";
 import type { Form } from "@/types";
+import AIReviewButton from "@/components/AIReviewButton";
+import Button from "@/components/ui/Button";
+import { Search, Download, X, User } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface SubmissionValue {
   id: string;
@@ -30,6 +34,7 @@ interface Submission {
     requires_review: boolean;
   } | null;
   values: SubmissionValue[];
+  ai_review?: any;
 }
 
 interface SubmissionsClientProps {
@@ -51,8 +56,9 @@ export default function SubmissionsClient({
 }: SubmissionsClientProps) {
   const router = useRouter();
 
-  const [expanded, setExpanded] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const [reviewModal, setReviewModal] = useState<{
@@ -61,6 +67,10 @@ export default function SubmissionsClient({
   } | null>(null);
 
   const [reviewNote, setReviewNote] = useState("");
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    alert(message); // Replace with your toast library later
+  };
 
   function openReviewModal(submission: Submission, action: ReviewAction) {
     setReviewModal({ submission, action });
@@ -90,20 +100,13 @@ export default function SubmissionsClient({
         }),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to update status");
-      }
+      if (!res.ok) throw new Error("Failed to update status");
 
+      showToast(action === "approved" ? "Submission approved successfully!" : "Submission rejected.", "success");
       closeReviewModal();
       router.refresh();
     } catch (err) {
-      console.error("Failed to update submission status:", err);
-      alert(
-        err instanceof Error
-          ? err.message
-          : "Failed to update submission status."
-      );
+      showToast("Failed to update submission status.", "error");
     } finally {
       setUpdatingId(null);
     }
@@ -114,24 +117,20 @@ export default function SubmissionsClient({
     router.push(`/admin/submissions${params}`);
   }
 
-  const filtered = search.trim()
-    ? submissions.filter((sub) => {
-        const haystack = [
-          sub.form?.title ?? "",
-          ...sub.values.map((v) => v.value),
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        return haystack.includes(search.toLowerCase());
-      })
-    : submissions;
+  const filtered = submissions.filter((sub) => {
+    const haystack = [sub.form?.title ?? "", ...sub.values.map((v) => v.value)]
+      .join(" ")
+      .toLowerCase();
+    return (
+      (search.trim() === "" || haystack.includes(search.toLowerCase())) &&
+      (statusFilter === "all" || sub.status === statusFilter)
+    );
+  });
 
   function exportCSV() {
     if (filtered.length === 0) return;
 
     const allLabels = new Set<string>();
-
     filtered.forEach((sub) =>
       sub.values.forEach((v) => {
         if (v.field) allLabels.add(v.field.label);
@@ -153,7 +152,6 @@ export default function SubmissionsClient({
         const match = sub.values.find((v) => v.field?.label === label);
         row[label] = match?.value ?? "";
       }
-
       return row;
     });
 
@@ -163,15 +161,24 @@ export default function SubmissionsClient({
     );
   }
 
+  const getSubmitterName = (sub: Submission) => {
+    const nameField = sub.values.find((v) =>
+      v.field?.label.toLowerCase().includes("name") ||
+      v.field?.label.toLowerCase().includes("full")
+    );
+    return nameField?.value || "Anonymous Applicant";
+  };
+
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row gap-3">
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4 items-end">
         <select
           value={selectedFormId ?? ""}
           onChange={(e) => handleFormFilter(e.target.value)}
-          className="form-input w-auto text-sm py-2.5"
+          className="form-input w-full sm:w-72"
         >
-          <option value="">All forms</option>
+          <option value="">All Forms</option>
           {forms.map((f) => (
             <option key={f.id} value={f.id}>
               {f.title}
@@ -179,156 +186,154 @@ export default function SubmissionsClient({
           ))}
         </select>
 
-        <input
-          type="text"
-          placeholder="Search responses..."
-          className="form-input pl-4 text-sm py-2.5 w-full"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="flex-1 relative">
+          <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search submitters or content..."
+            className="form-input pl-11 w-full"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
 
-        <button
-          onClick={exportCSV}
-          disabled={filtered.length === 0}
-          className="btn-ghost text-sm px-5 py-2.5 disabled:opacity-40"
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as any)}
+          className="form-input w-full sm:w-48"
         >
+          <option value="all">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+
+        <Button onClick={exportCSV} disabled={filtered.length === 0} className="flex items-center gap-2 whitespace-nowrap">
+          <Download size={18} />
           Export CSV
-        </button>
+        </Button>
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="glass-card p-16 text-center">
-          <p className="text-slate-500 text-sm">
-            {search ? "No submissions match your search." : "No submissions yet."}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((sub) => (
-            <div key={sub.id} className="glass-card overflow-hidden">
-              <button
-                onClick={() =>
-                  setExpanded((e) => (e === sub.id ? null : sub.id))
-                }
-                className="w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-ocean-800/30 transition-colors"
+      {/* Table */}
+      <div className="glass-card overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-ocean-700 bg-ocean-950/80">
+              <th className="px-6 py-4 text-left font-medium">Submitter</th>
+              <th className="px-6 py-4 text-left font-medium">Submitted</th>
+              <th className="px-6 py-4 text-left font-medium">Status</th>
+              <th className="px-6 py-4 text-left font-medium">AI Score</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-ocean-800">
+            {filtered.map((sub) => (
+              <tr
+                key={sub.id}
+                onClick={() => setSelectedSubmission(sub)}
+                className="hover:bg-ocean-900/70 cursor-pointer transition-colors group"
               >
-                <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-4 gap-2">
-                  <span className="text-white text-sm font-medium truncate">
-                    {sub.form?.title ?? "Unknown form"}
+                <td className="px-6 py-5 font-medium flex items-center gap-3">
+                  <User size={18} className="text-slate-400" />
+                  {getSubmitterName(sub)}
+                </td>
+                <td className="px-6 py-5 text-slate-400 text-sm">
+                  {formatDateTime(sub.submitted_at)}
+                </td>
+                <td className="px-6 py-5">
+                  <span className={`inline-flex px-4 py-1 text-xs rounded-full font-medium
+                    ${sub.status === "approved" ? "bg-green-500/20 text-green-400" : 
+                      sub.status === "rejected" ? "bg-red-500/20 text-red-400" : 
+                      "bg-yellow-500/20 text-yellow-400"}`}>
+                    {sub.status}
                   </span>
-
-                  <span className="text-slate-400 text-sm">
-                    {formatDateTime(sub.submitted_at)}
-                  </span>
-
-                  <span
-                    className={`text-xs font-mono px-2 py-1 rounded w-fit ${
-                      sub.status === "approved"
-                        ? "bg-green-500/10 text-green-400 border border-green-500/30"
-                        : sub.status === "rejected"
-                        ? "bg-red-500/10 text-red-400 border border-red-500/30"
-                        : "bg-yellow-500/10 text-yellow-400 border border-yellow-500/30"
-                    }`}
-                  >
-                    {sub.status ?? "pending"}
-                  </span>
-
-                  <span className="text-slate-600 text-xs font-mono truncate hidden sm:block">
-                    {sub.id}
-                  </span>
-                </div>
-              </button>
-
-              {expanded === sub.id && (
-                <div className="border-t border-ocean-700/40 px-6 py-5 bg-ocean-900/30">
-                  {sub.values.length === 0 ? (
-                    <p className="text-slate-600 text-sm">
-                      No field values recorded.
-                    </p>
+                </td>
+                <td className="px-6 py-5">
+                  {sub.ai_review ? (
+                    <span className="font-mono text-emerald-400 font-medium">{sub.ai_review.score}/10</span>
                   ) : (
-                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                      {sub.values.map((val) => {
-                        const isArchived = val.field?.is_active === false;
-
-                        return (
-                          <div key={val.id}>
-                            <dt className="flex items-center gap-2 mb-1">
-                              <span className="text-slate-500 text-xs font-mono uppercase tracking-wider">
-                                {val.field?.label ?? "Deleted field"}
-                              </span>
-
-                              {isArchived && (
-                                <span className="text-[10px] font-mono text-orange-400/70 bg-orange-400/10 border border-orange-400/20 px-1.5 py-0.5 rounded">
-                                  archived
-                                </span>
-                              )}
-                            </dt>
-
-                            <dd
-                              className={`text-sm break-words ${
-                                isArchived ? "text-slate-400" : "text-white"
-                              }`}
-                            >
-                              {isFileValue(val) ? (
-                                <FilePreview path={val.value} />
-                              ) : val.value ? (
-                                val.value
-                              ) : (
-                                <span className="text-slate-600 italic">
-                                  empty
-                                </span>
-                              )}
-                            </dd>
-                          </div>
-                        );
-                      })}
-                    </dl>
+                    <span className="text-slate-500">—</span>
                   )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-                  <div className="mt-5 pt-4 border-t border-ocean-700/30 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <span className="text-slate-600 text-xs font-mono">
-                        ID: {sub.id}
-                      </span>
+      {/* Right Side Drawer */}
+      <AnimatePresence>
+        {selectedSubmission && (
+          <div className="fixed inset-0 z-50 flex justify-end bg-black/70" onClick={(e) => e.target === e.currentTarget && setSelectedSubmission(null)}>
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="w-full max-w-2xl h-full bg-ocean-950 border-l border-ocean-700 overflow-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-ocean-950 border-b border-ocean-700 p-6 flex items-center justify-between z-10">
+                <h2 className="text-2xl font-semibold">Submission Details</h2>
+                <button onClick={() => setSelectedSubmission(null)} className="text-slate-400 hover:text-white">
+                  <X size={28} />
+                </button>
+              </div>
 
-                      {sub.ip_address && (
-                        <span className="text-slate-600 text-xs font-mono">
-                          IP: {sub.ip_address}
-                        </span>
-                      )}
-                    </div>
+              <div className="p-6 space-y-10">
+                <AIReviewButton
+                  submissionId={selectedSubmission.id}
+                  submissionData={selectedSubmission}
+                  onReviewComplete={() => router.refresh()}
+                />
 
-                    {Boolean(sub.form?.requires_review) && (
-                      <div className="flex gap-2">
-                        {sub.status !== "approved" && (
-                          <button
-                            onClick={() => openReviewModal(sub, "approved")}
-                            disabled={updatingId === sub.id}
-                            className="text-xs px-3 py-1.5 rounded bg-green-500/10 text-green-400 border border-green-500/30 disabled:opacity-50"
-                          >
-                            Approve
-                          </button>
-                        )}
-
-                        {sub.status !== "rejected" && (
-                          <button
-                            onClick={() => openReviewModal(sub, "rejected")}
-                            disabled={updatingId === sub.id}
-                            className="text-xs px-3 py-1.5 rounded bg-red-500/10 text-red-400 border border-red-500/30 disabled:opacity-50"
-                          >
-                            Reject
-                          </button>
-                        )}
-                      </div>
-                    )}
+                <div>
+                  <h4 className="font-semibold mb-5 text-lg">Submission Information</h4>
+                  <div className="space-y-6">
+                    {selectedSubmission.values.map((val) => {
+                      const isArchived = val.field?.is_active === false;
+                      return (
+                        <div key={val.id}>
+                          <p className="text-xs text-slate-500 mb-1 font-mono tracking-wider">
+                            {val.field?.label} {isArchived && "(Archived)"}
+                          </p>
+                          <p className="text-slate-200 break-words">
+                            {isFileValue(val) ? <FilePreview path={val.value} /> : val.value || "—"}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
 
+                {Boolean(selectedSubmission.form?.requires_review) && (
+                  <div className="flex gap-4 pt-6 border-t border-ocean-700">
+                    {selectedSubmission.status !== "approved" && (
+                      <Button
+                        onClick={() => openReviewModal(selectedSubmission, "approved")}
+                        disabled={updatingId === selectedSubmission.id}
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                      >
+                        Approve
+                      </Button>
+                    )}
+                    {selectedSubmission.status !== "rejected" && (
+                      <Button
+                        onClick={() => openReviewModal(selectedSubmission, "rejected")}
+                        disabled={updatingId === selectedSubmission.id}
+                        className="flex-1 bg-red-600 hover:bg-red-700"
+                      >
+                        Reject
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Review Modal */}
       {reviewModal && (
         <ReviewModal
           action={reviewModal.action}
@@ -344,6 +349,7 @@ export default function SubmissionsClient({
   );
 }
 
+/* ==================== ORIGINAL REVIEW MODAL ==================== */
 function ReviewModal({
   action,
   submission,
@@ -370,7 +376,6 @@ function ReviewModal({
           <h2 className="font-display text-xl font-bold text-white">
             {isApproval ? "Approve Submission" : "Reject Submission"}
           </h2>
-
           <p className="mt-1 text-sm text-slate-500">
             {submission.form?.title ?? "Form submission"}
           </p>
@@ -378,10 +383,7 @@ function ReviewModal({
 
         <div className="px-6 py-5 space-y-4">
           <div className="rounded-xl border border-ocean-700/50 bg-ocean-900/50 p-4">
-            <p className="text-xs font-mono text-slate-500 mb-1">
-              Email placeholder
-            </p>
-
+            <p className="text-xs font-mono text-slate-500 mb-1">Email placeholder</p>
             <p className="text-sm text-slate-300">
               Whatever you type here can appear in the email as{" "}
               <span className="font-mono text-teal-300">{"{{review_note}}"}</span>.
@@ -392,7 +394,6 @@ function ReviewModal({
             <label className="form-label">
               {isApproval ? "Approval note" : "Rejection reason"}
             </label>
-
             <textarea
               rows={6}
               value={note}
@@ -407,10 +408,7 @@ function ReviewModal({
           </div>
 
           <div className="rounded-xl border border-ocean-700/50 bg-ocean-900/40 p-4">
-            <p className="text-xs font-mono text-slate-500 mb-2">
-              Email preview value
-            </p>
-
+            <p className="text-xs font-mono text-slate-500 mb-2">Email preview value</p>
             <p className="text-sm text-slate-300 whitespace-pre-line">
               {note || "No review note added."}
             </p>
@@ -459,17 +457,12 @@ function FilePreview({ path }: { path: string }) {
   async function loadFile() {
     try {
       setLoading(true);
-
       const supabase = createBrowserClient();
-
       const { data, error } = await supabase.storage
         .from("form-uploads")
         .createSignedUrl(path, 60 * 5);
 
-      if (error || !data?.signedUrl) {
-        throw new Error("Failed to load file");
-      }
-
+      if (error || !data?.signedUrl) throw new Error("Failed to load file");
       setUrl(data.signedUrl);
     } catch {
       alert("Could not load file.");
@@ -492,38 +485,17 @@ function FilePreview({ path }: { path: string }) {
         </button>
       ) : isImage ? (
         <div className="space-y-2">
-          <img
-            src={url}
-            alt="Uploaded file"
-            className="max-h-48 rounded border border-ocean-700"
-          />
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-slate-400 underline"
-          >
+          <img src={url} alt="Uploaded file" className="max-h-48 rounded border border-ocean-700" />
+          <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-slate-400 underline">
             Open full image
           </a>
         </div>
       ) : (
         <div className="flex gap-3">
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-teal-400 hover:text-teal-300 underline text-sm"
-          >
+          <a href={url} target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:text-teal-300 underline text-sm">
             Open document
           </a>
-
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            download
-            className="text-teal-400 hover:text-teal-300 underline text-sm"
-          >
+          <a href={url} target="_blank" rel="noopener noreferrer" download className="text-teal-400 hover:text-teal-300 underline text-sm">
             Download
           </a>
         </div>
