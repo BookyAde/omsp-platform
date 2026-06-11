@@ -8,6 +8,8 @@ import { FIELD_TYPE_LABELS } from "@/lib/constants";
 import type { FieldType, FormStatus, FormFieldDraft } from "@/types";
 import FormField from "./FormField";
 import FormPreview from "./FormPreview";
+import AIFormAssistant from "./AIFormAssistant";
+import { Sparkles } from "lucide-react";
 
 interface FormBuilderProps {
   initialData?: {
@@ -54,6 +56,7 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
   const [error, setError] = useState("");
   const [copyText, setCopyText] = useState("Copy link");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
 
   const [approvalEmailEnabled, setApprovalEmailEnabled] = useState(true);
   const [approvalEmailSubject, setApprovalEmailSubject] = useState("");
@@ -95,6 +98,55 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
     );
   }, [initialData]);
 
+  // Toast Notification
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    const toast = document.createElement("div");
+    toast.className = `fixed bottom-6 right-6 px-6 py-4 rounded-2xl text-sm font-medium shadow-2xl z-[100] transition-all ${
+      type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
+    }`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+  };
+
+  // Handle Full AI Generated Form
+  const handleFormGenerated = (config: any) => {
+    if (config.title) setTitle(config.title);
+    if (config.description) setDescription(config.description);
+    if (config.visibility) setVisibility(config.visibility);
+    if (typeof config.requires_review === "boolean") setRequiresReview(config.requires_review);
+    if (typeof config.generate_qr === "boolean") setGenerateQr(config.generate_qr);
+    if (config.form_mode) setFormMode(config.form_mode);
+    if (config.deadline) setDeadline(config.deadline);
+
+    if (typeof config.approval_email_enabled === "boolean") setApprovalEmailEnabled(config.approval_email_enabled);
+    if (config.approval_email_subject) setApprovalEmailSubject(config.approval_email_subject);
+    if (config.approval_email_message) setApprovalEmailMessage(config.approval_email_message);
+
+    if (typeof config.rejection_email_enabled === "boolean") setRejectionEmailEnabled(config.rejection_email_enabled);
+    if (config.rejection_email_subject) setRejectionEmailSubject(config.rejection_email_subject);
+    if (config.rejection_email_message) setRejectionEmailMessage(config.rejection_email_message);
+
+    if (config.fields && Array.isArray(config.fields)) {
+      const newFields = config.fields.map((f: any, index: number) => ({
+        id: generateId(),
+        label: f.label || "Untitled Field",
+        field_type: f.field_type || "text",
+        placeholder: f.placeholder || null,
+        required: f.required ?? false,
+        options: f.options || null,
+        field_order: index,
+        is_active: true,
+        step: "General",
+        accepted_types: f.accepted_types || [],
+        max_size_mb: f.max_size_mb ?? 5,
+      }));
+      setFields(newFields);
+    }
+
+    showToast("✅ Full form generated successfully with AI!", "success");
+  };
+
   function handleTitleChange(value: string) {
     setTitle(value);
     if (!slugEdited) setSlug(slugify(value));
@@ -129,7 +181,6 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
     setFields((prev) =>
       prev.map((field) => {
         if (field.id !== id) return field;
-
         return {
           ...field,
           ...updates,
@@ -152,13 +203,10 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
   function moveField(id: string, direction: "up" | "down") {
     setFields((prev) => {
       const index = prev.findIndex((field) => field.id === id);
-
-      if (direction === "up" && index === 0) return prev;
-      if (direction === "down" && index === prev.length - 1) return prev;
+      if ((direction === "up" && index === 0) || (direction === "down" && index === prev.length - 1)) return prev;
 
       const next = [...prev];
       const swapIndex = direction === "up" ? index - 1 : index + 1;
-
       [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
 
       return next.map((field, order) => ({ ...field, field_order: order }));
@@ -168,11 +216,13 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
   async function handleSave(saveStatus?: FormStatus) {
     if (!title.trim()) {
       setError("Title is required.");
+      showToast("Title is required.", "error");
       return;
     }
 
     if (!slug.trim()) {
       setError("Slug is required.");
+      showToast("Slug is required.", "error");
       return;
     }
 
@@ -220,13 +270,17 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
 
       if (!res.ok) {
         setError(data.error ?? "Failed to save form.");
+        showToast(data.error ?? "Failed to save form.", "error");
         return;
       }
 
+      showToast(isEdit ? "Form updated successfully!" : "Form created successfully!", "success");
       router.push("/admin/forms");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save form.");
+      const msg = err instanceof Error ? err.message : "Failed to save form.";
+      setError(msg);
+      showToast(msg, "error");
     } finally {
       setSaving(false);
     }
@@ -238,10 +292,8 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
     setSaving(true);
 
     try {
-      await fetch(`/api/forms/${initialData.id}`, {
-        method: "DELETE",
-      });
-
+      await fetch(`/api/forms/${initialData.id}`, { method: "DELETE" });
+      showToast("Form deleted successfully", "success");
       router.push("/admin/forms");
       router.refresh();
     } finally {
@@ -252,11 +304,10 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
 
   async function copyPublicLink() {
     const url = `${window.location.origin}/f/${slug}`;
-
     await navigator.clipboard.writeText(url);
-
     setCopyText("Copied!");
     setTimeout(() => setCopyText("Copy link"), 2000);
+    showToast("Link copied to clipboard");
   }
 
   return (
@@ -334,6 +385,15 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
                 Add Field
               </p>
 
+              <button
+                type="button"
+                onClick={() => setShowAIAssistant(true)}
+                className="w-full mb-6 flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white py-3 rounded-xl font-medium transition-all"
+              >
+                <Sparkles size={18} />
+                ✦ AI Generate Form
+              </button>
+
               <div className="grid grid-cols-2 lg:grid-cols-1 gap-2">
                 {(Object.keys(FIELD_TYPE_LABELS) as FieldType[]).map((type) => (
                   <button
@@ -356,7 +416,7 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
             {fields.length === 0 ? (
               <div className="glass-card p-16 text-center border-dashed border-ocean-600/40">
                 <p className="text-slate-500 text-sm">
-                  No fields yet. Add fields from the palette on the left.
+                  No fields yet. Add fields from the palette on the left or use AI Assistant.
                 </p>
               </div>
             ) : (
@@ -407,9 +467,7 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
               <select
                 className="form-input"
                 value={visibility}
-                onChange={(e) =>
-                  setVisibility(e.target.value as "public" | "private")
-                }
+                onChange={(e) => setVisibility(e.target.value as "public" | "private")}
               >
                 <option value="public">Public</option>
                 <option value="private">Private</option>
@@ -442,27 +500,21 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
 
             <div>
               <label className="form-label">Form Layout</label>
-
               <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => setFormMode("single_page")}
                   className={`px-4 py-2 rounded-xl border text-sm ${
-                    formMode === "single_page"
-                      ? "border-teal-400 bg-teal-500/10 text-teal-300"
-                      : "border-white/10 text-slate-400 hover:text-white"
+                    formMode === "single_page" ? "border-teal-400 bg-teal-500/10 text-teal-300" : "border-white/10 text-slate-400 hover:text-white"
                   }`}
                 >
                   Single Page
                 </button>
-
                 <button
                   type="button"
                   onClick={() => setFormMode("multi_step")}
                   className={`px-4 py-2 rounded-xl border text-sm ${
-                    formMode === "multi_step"
-                      ? "border-teal-400 bg-teal-500/10 text-teal-300"
-                      : "border-white/10 text-slate-400 hover:text-white"
+                    formMode === "multi_step" ? "border-teal-400 bg-teal-500/10 text-teal-300" : "border-white/10 text-slate-400 hover:text-white"
                   }`}
                 >
                   Multi Step
@@ -472,12 +524,10 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
 
             <div>
               <label className="form-label">URL Slug</label>
-
               <div className="flex items-center gap-0">
                 <span className="px-3 py-3 bg-ocean-900 border border-r-0 border-ocean-600 rounded-l-lg text-slate-500 text-sm font-mono">
                   /f/
                 </span>
-
                 <input
                   type="text"
                   className="form-input rounded-l-none flex-1"
@@ -501,18 +551,14 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
             {isEdit && (
               <div>
                 <label className="form-label">Public Link</label>
-
                 <div className="flex gap-2">
                   <input
                     readOnly
                     value={`${
-                      typeof window !== "undefined"
-                        ? window.location.origin
-                        : "https://omsp.org"
+                      typeof window !== "undefined" ? window.location.origin : "https://omsp.org"
                     }/f/${slug}`}
                     className="form-input flex-1 text-slate-400 font-mono text-xs"
                   />
-
                   <button
                     type="button"
                     onClick={copyPublicLink}
@@ -520,7 +566,6 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
                   >
                     {copyText}
                   </button>
-
                   <a
                     href={`/f/${slug}`}
                     target="_blank"
@@ -536,25 +581,20 @@ export default function FormBuilder({ initialData }: FormBuilderProps) {
 
           <div className="glass-card p-6 space-y-5">
             <div>
-              <h3 className="font-display font-bold text-white">
-                Approval & Rejection Emails
-              </h3>
-
+              <h3 className="font-display font-bold text-white">Approval & Rejection Emails</h3>
               <p className="text-slate-500 text-sm mt-1">
-                Configure the automatic emails sent when submissions for this
-                form are approved or rejected.
+                Configure the automatic emails sent when submissions for this form are approved or rejected.
               </p>
             </div>
 
+            {/* Approval Email Section */}
             <div className="rounded-xl border border-ocean-700/50 bg-ocean-900/40 p-5 space-y-4">
               <div>
                 <label className="form-label">Send Approval Email</label>
                 <select
                   className="form-input"
                   value={approvalEmailEnabled ? "yes" : "no"}
-                  onChange={(e) =>
-                    setApprovalEmailEnabled(e.target.value === "yes")
-                  }
+                  onChange={(e) => setApprovalEmailEnabled(e.target.value === "yes")}
                 >
                   <option value="yes">Yes, send approval email</option>
                   <option value="no">No, do not send approval email</option>
@@ -592,15 +632,14 @@ Regards,
               </div>
             </div>
 
+            {/* Rejection Email Section */}
             <div className="rounded-xl border border-ocean-700/50 bg-ocean-900/40 p-5 space-y-4">
               <div>
                 <label className="form-label">Send Rejection Email</label>
                 <select
                   className="form-input"
                   value={rejectionEmailEnabled ? "yes" : "no"}
-                  onChange={(e) =>
-                    setRejectionEmailEnabled(e.target.value === "yes")
-                  }
+                  onChange={(e) => setRejectionEmailEnabled(e.target.value === "yes")}
                 >
                   <option value="yes">Yes, send rejection email</option>
                   <option value="no">No, do not send rejection email</option>
@@ -641,42 +680,27 @@ Regards,
             </div>
 
             <div className="rounded-xl border border-teal-500/20 bg-teal-500/10 p-4">
-              <p className="text-teal-300 text-sm font-medium mb-2">
-                Available placeholders
-              </p>
-
+              <p className="text-teal-300 text-sm font-medium mb-2">Available placeholders</p>
               <p className="text-slate-400 text-xs leading-6 font-mono">
-                {"{{name}}"} {"{{email}}"} {"{{form_title}}"} {"{{status}}"}{" "}
-                {"{{review_note}}"} {"{{organization_name}}"} {"{{site_name}}"}
+                {"{{name}}"} {"{{email}}"} {"{{form_title}}"} {"{{status}}"} {"{{review_note}}"} {"{{organization_name}}"} {"{{site_name}}"}
               </p>
             </div>
           </div>
 
           {generateQr && slug && (
             <div className="glass-card p-6">
-              <h3 className="font-display font-bold text-white mb-3">
-                Form QR Code
-              </h3>
-
-              <p className="text-slate-400 text-sm mb-4">
-                This QR code opens the public form link.
-              </p>
-
+              <h3 className="font-display font-bold text-white mb-3">Form QR Code</h3>
+              <p className="text-slate-400 text-sm mb-4">This QR code opens the public form link.</p>
               <QRCodePreview slug={slug} />
             </div>
           )}
 
           {isEdit && (
             <div className="glass-card p-6 border-red-500/20">
-              <h3 className="font-display font-bold text-red-400 mb-3">
-                Danger Zone
-              </h3>
-
+              <h3 className="font-display font-bold text-red-400 mb-3">Danger Zone</h3>
               <p className="text-slate-400 text-sm mb-5">
-                Deleting this form will permanently remove all submissions. This
-                cannot be undone.
+                Deleting this form will permanently remove all submissions. This cannot be undone.
               </p>
-
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(true)}
@@ -694,13 +718,8 @@ Regards,
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
           <div className="w-full max-w-md rounded-2xl border border-red-500/20 bg-ocean-950 shadow-2xl">
             <div className="border-b border-ocean-700/50 px-6 py-5">
-              <h2 className="font-display text-xl font-bold text-white">
-                Delete Form
-              </h2>
-
-              <p className="mt-2 text-sm text-slate-500">
-                This action cannot be undone.
-              </p>
+              <h2 className="font-display text-xl font-bold text-white">Delete Form</h2>
+              <p className="mt-2 text-sm text-slate-500">This action cannot be undone.</p>
             </div>
 
             <div className="px-6 py-5">
@@ -733,6 +752,12 @@ Regards,
           </div>
         </div>
       )}
+
+      <AIFormAssistant
+        isOpen={showAIAssistant}
+        onClose={() => setShowAIAssistant(false)}
+        onFormGenerated={handleFormGenerated}
+      />
     </div>
   );
 }
@@ -746,7 +771,6 @@ function QRCodePreview({ slug }: { slug: string }) {
       const qr = await QRCode.toDataURL(url);
       setQrCode(qr);
     }
-
     makeQr();
   }, [slug]);
 
@@ -759,7 +783,6 @@ function QRCodePreview({ slug }: { slug: string }) {
         alt="Form QR Code"
         className="w-52 h-52 rounded-xl border border-ocean-700 bg-white p-2"
       />
-
       <a
         href={qrCode}
         download={`${slug}-form-qr.png`}
