@@ -25,11 +25,24 @@ export async function GET(
 
   if (error || !data) return notFoundResponse("Form not found.");
 
-  data.form_fields = (data.form_fields ?? [])
-    .filter((field: any) => field.is_active !== false)
-    .sort((a: any, b: any) => a.field_order - b.field_order);
+  // Ensure all email fields are present (with defaults) so the FormBuilder can display them
+  const result = {
+    ...data,
+    approval_email_enabled: data.approval_email_enabled ?? true,
+    approval_email_subject: data.approval_email_subject ?? null,
+    approval_email_message: data.approval_email_message ?? null,
+    rejection_email_enabled: data.rejection_email_enabled ?? true,
+    rejection_email_subject: data.rejection_email_subject ?? null,
+    rejection_email_message: data.rejection_email_message ?? null,
+    admin_notification_enabled: data.admin_notification_enabled ?? true,
+    admin_notification_subject: data.admin_notification_subject ?? null,
+    admin_notification_message: data.admin_notification_message ?? null,
+    form_fields: (data.form_fields ?? [])
+      .filter((field: any) => field.is_active !== false)
+      .sort((a: any, b: any) => a.field_order - b.field_order),
+  };
 
-  return NextResponse.json(data);
+  return NextResponse.json(result);
 }
 
 export async function PATCH(

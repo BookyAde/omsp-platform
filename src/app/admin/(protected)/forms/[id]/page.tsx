@@ -41,9 +41,7 @@ export default function EditFormPage() {
               options: field.options ?? null,
               field_order: field.field_order ?? index,
               is_active: field.is_active ?? true,
-
               step: field.step ?? "General",
-
               accepted_types: field.accepted_types ?? [],
               max_size_mb: field.max_size_mb ?? 5,
             }))
@@ -56,12 +54,18 @@ export default function EditFormPage() {
           description: form.description ?? "",
           status: form.status ?? "draft",
           visibility: form.visibility ?? "public",
-
           requires_review: form.requires_review ?? false,
           form_mode: form.form_mode ?? "single_page",
-
           deadline: form.deadline ?? null,
           fields: mappedFields,
+
+          // ✅ Email settings
+          approval_email_enabled: form.approval_email_enabled ?? true,
+          approval_email_subject: form.approval_email_subject ?? null,
+          approval_email_message: form.approval_email_message ?? null,
+          rejection_email_enabled: form.rejection_email_enabled ?? true,
+          rejection_email_subject: form.rejection_email_subject ?? null,
+          rejection_email_message: form.rejection_email_message ?? null,
         };
 
         setInitialData(builtInitialData);

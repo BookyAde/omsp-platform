@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase";
 import { formatDateTime, objectsToCSV, downloadCSV } from "@/lib/utils";
 import type { Form } from "@/types";
 import AIReviewButton from "@/components/AIReviewButton";
 import Button from "@/components/ui/Button";
-import { Search, Download, X, User } from "lucide-react";
+import { Search, Download, X, User, CheckCircle, XCircle } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 interface SubmissionValue {
@@ -68,8 +68,32 @@ export default function SubmissionsClient({
 
   const [reviewNote, setReviewNote] = useState("");
 
+  // ─── Result Modal state (centered card) ──────────────────────
+  const [resultModal, setResultModal] = useState<{
+    visible: boolean;
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  // Auto‑dismiss timer (2.5 seconds)
+  useEffect(() => {
+    if (resultModal?.visible) {
+      const timer = setTimeout(() => {
+        setResultModal((prev) => (prev ? { ...prev, visible: false } : null));
+        setTimeout(() => setResultModal(null), 300);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [resultModal]);
+
+  // Show the centered card
+  const showResultModal = (message: string, type: "success" | "error") => {
+    setResultModal({ visible: true, type, message });
+  };
+
+  // Toast for file‑loading errors (kept simple – you can upgrade later)
   const showToast = (message: string, type: "success" | "error" = "success") => {
-    alert(message); // Replace with your toast library later
+    alert(message);
   };
 
   function openReviewModal(submission: Submission, action: ReviewAction) {
@@ -102,11 +126,14 @@ export default function SubmissionsClient({
 
       if (!res.ok) throw new Error("Failed to update status");
 
-      showToast(action === "approved" ? "Submission approved successfully!" : "Submission rejected.", "success");
+      const actionText = action === "approved" ? "Approved" : "Rejected";
+      const message = `Submission ${actionText} successfully!`;
+      showResultModal(message, action === "approved" ? "success" : "error");
+
       closeReviewModal();
       router.refresh();
     } catch (err) {
-      showToast("Failed to update submission status.", "error");
+      showResultModal("Failed to update submission status.", "error");
     } finally {
       setUpdatingId(null);
     }
@@ -345,11 +372,51 @@ export default function SubmissionsClient({
           onSubmit={submitReview}
         />
       )}
+
+      {/* ─── Centered Result Modal ─────────────────────────────── */}
+      <AnimatePresence>
+        {resultModal?.visible && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+            onClick={() => setResultModal((prev) => (prev ? { ...prev, visible: false } : null))}
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.8, y: 20 }}
+              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+              className="w-full max-w-md rounded-3xl border border-ocean-700 bg-ocean-950 p-8 text-center shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", damping: 12, stiffness: 200 }}
+                className="mx-auto mb-4 flex h-24 w-24 items-center justify-center"
+              >
+                {resultModal.type === "success" ? (
+                  <CheckCircle className="h-20 w-20 text-green-400" strokeWidth={1.5} />
+                ) : (
+                  <XCircle className="h-20 w-20 text-red-400" strokeWidth={1.5} />
+                )}
+              </motion.div>
+
+              <h3 className="text-2xl font-bold text-white">
+                {resultModal.type === "success" ? "Success!" : "Error"}
+              </h3>
+              <p className="mt-2 text-slate-300">{resultModal.message}</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-/* ==================== ORIGINAL REVIEW MODAL ==================== */
+/* ==================== REVIEW MODAL ==================== */
 function ReviewModal({
   action,
   submission,
@@ -449,6 +516,7 @@ function ReviewModal({
   );
 }
 
+/* ==================== FILE PREVIEW ==================== */
 function FilePreview({ path }: { path: string }) {
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
