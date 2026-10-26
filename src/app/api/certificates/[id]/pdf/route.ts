@@ -23,6 +23,8 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  console.log("[pdf-route] called for id:", params.id);
+
   const authError = await requireAdmin();
   if (authError) return authError;
 
@@ -80,13 +82,13 @@ export async function GET(
         "Cache-Control": "no-store",
       },
     });
-  } catch (pdfError) {
-    console.error("Certificate PDF generation error:", pdfError);
+  } catch (e) {
+    console.error("[pdf-route] generation failed:", e);
 
     return NextResponse.json(
       {
         error: "PDF generation failed",
-        detail: pdfError instanceof Error ? pdfError.message : String(pdfError),
+        detail: e instanceof Error ? e.message : String(e),
       },
       { status: 500 }
     );

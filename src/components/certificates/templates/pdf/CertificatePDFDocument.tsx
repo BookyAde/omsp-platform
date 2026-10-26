@@ -63,8 +63,14 @@ registerPdfFonts();
 
 // ─── Units & helpers ─────────────────────────────────────────────────────────
 
+// A4 landscape in points. Always passed to <Page> as an explicit [w, h] tuple;
+// size="A4" alone is portrait. Do NOT add wrap={false} to these pages: react-pdf
+// then skips applying the page height, and with every child absolutely
+// positioned the page collapses to height 0 (invalid /MediaBox, Acrobat reports
+// "dimensions of this page are out-of-range").
 const PAGE_W = 841.89;
 const PAGE_H = 595.28;
+const PAGE_SIZE: [number, number] = [PAGE_W, PAGE_H];
 const PREVIEW_W = 1024;
 const PX = PAGE_W / PREVIEW_W;
 const px = (n: number) => Math.round(n * PX * 100) / 100;
@@ -215,20 +221,21 @@ function Gradient({
   y2: number;
   stops: [number, string][];
 }) {
+  // An <Svg> is laid out in flow even when styled absolute, which pushes the
+  // page onto a second sheet. Pin it inside a fixed absolute box instead.
   return (
-    <Svg
-      style={{ position: "absolute", left, top, width, height }}
-      viewBox={`0 0 ${width} ${height}`}
-    >
-      <Defs>
-        <LinearGradient id={id} x1="0" y1="0" x2={String(x2)} y2={String(y2)}>
-          {stops.map(([offset, color]) => (
-            <Stop key={offset} offset={`${offset * 100}%`} stopColor={color} />
-          ))}
-        </LinearGradient>
-      </Defs>
-      <Rect x="0" y="0" width={width} height={height} fill={`url(#${id})`} />
-    </Svg>
+    <View style={{ position: "absolute", left, top, width, height }}>
+      <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+        <Defs>
+          <LinearGradient id={id} x1="0" y1="0" x2={String(x2)} y2={String(y2)}>
+            {stops.map(([offset, color]) => (
+              <Stop key={offset} offset={`${offset * 100}%`} stopColor={color} />
+            ))}
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width={width} height={height} fill={`url(#${id})`} />
+      </Svg>
+    </View>
   );
 }
 
@@ -630,7 +637,7 @@ function ClassicMaritimePDF(p: RenderProps) {
   const title = p.certificateTitle?.trim() || "Certificate of Excellence";
 
   return (
-    <Page size="A4" orientation="landscape" wrap={false}>
+    <Page size={PAGE_SIZE}>
       <Background color={BG} />
       <Frame inset={0} width={B} color={NAVY} />
       <Frame inset={B + 20} width={2} color={mix("#f59e0b", BG, 0.7)} />
@@ -700,7 +707,7 @@ function PureCleanPDF(p: RenderProps) {
   const title = p.certificateTitle?.trim() || "Certificate of Recognition";
 
   return (
-    <Page size="A4" orientation="landscape" wrap={false}>
+    <Page size={PAGE_SIZE}>
       <Background color={WHITE} />
       <Frame inset={0} width={B} color={SLATE_200} />
       <Frame inset={B + 24} width={1} color={SLATE_200} radius={8} />
@@ -778,7 +785,7 @@ function OceanDepthPDF(p: RenderProps) {
   const title = p.certificateTitle?.trim() || "Certificate of Excellence";
 
   return (
-    <Page size="A4" orientation="landscape" wrap={false}>
+    <Page size={PAGE_SIZE}>
       <Background color={BG} />
       <Gradient
         id="ocean-bg"
@@ -866,7 +873,7 @@ function ExecutiveDistinctionPDF(p: RenderProps) {
   if (p.expiryDate) metaItems.push(["Valid Until", p.expiryDate]);
 
   return (
-    <Page size="A4" orientation="landscape" wrap={false}>
+    <Page size={PAGE_SIZE}>
       <Background color={BG} />
       <Frame inset={0} width={B} color={GOLD_FRAME} />
       <Frame inset={B + 16} width={1} color={mix(GOLD_FRAME, BG, 0.6)} radius={2} />
@@ -1075,7 +1082,7 @@ function OMSPMembershipPDF(p: RenderProps) {
   );
 
   return (
-    <Page size="A4" orientation="landscape" wrap={false}>
+    <Page size={PAGE_SIZE}>
       <Background color={WHITE} />
       <Gradient
         id="membership-bg"
@@ -1328,6 +1335,8 @@ export default function CertificatePDFDocument({
   signatoryTitle = "Authorized Signatory",
   designOverrides,
 }: CertificatePDFProps) {
+  console.log("[pdf] page size:", PAGE_W, PAGE_H);
+
   const props: RenderProps = {
     recipientName,
     certificateTitle: certificateTitle || "", // each template supplies its own fallback title
