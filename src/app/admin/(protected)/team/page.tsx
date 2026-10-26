@@ -355,7 +355,7 @@ export default function AdminTeamPage() {
         <div className="space-y-8 animate-in fade-in duration-300">
           <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl">
             <p className="text-sm text-slate-400">
-              These accounts were previously admins but have had their access revoked. To restore access, go to the "Active Admins" tab and invite them again using the same email.
+              These accounts were previously admins but have had their access revoked. To restore access, go to the &quot;Active Admins&quot; tab and invite them again using the same email.
             </p>
           </div>
           <AdminTable 
