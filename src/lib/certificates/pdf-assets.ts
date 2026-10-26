@@ -35,11 +35,12 @@ export function getPdfAssetSrc(publicPath: string): string {
     const mime = MIME[path.extname(publicPath).toLowerCase()] ?? "application/octet-stream";
     src = `data:${mime};base64,${fs.readFileSync(file).toString("base64")}`;
   } catch (err) {
-    console.warn(
-      `PDF asset "${publicPath}" could not be read from disk, falling back to URL:`,
-      err instanceof Error ? err.message : err
+    const url = `${getSiteUrl()}/${publicPath}`;
+    console.error(
+      `[certificate-pdf] Could not read "${publicPath}" from disk (cwd: ${process.cwd()}): ` +
+        `${err instanceof Error ? err.message : err}. Falling back to ${url}`
     );
-    return `${getSiteUrl()}/${publicPath}`;
+    return url;
   }
 
   cache.set(publicPath, src);

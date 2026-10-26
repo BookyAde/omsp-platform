@@ -157,6 +157,16 @@ const fill: S = {
 
 // ─── Building blocks ─────────────────────────────────────────────────────────
 
+/**
+ * Full-page background. Painted as an explicit View rather than via
+ * <Page style={{ backgroundColor }}>: every child of these pages is absolutely
+ * positioned, so the Page box collapses to zero height and its own background
+ * fills nothing (dark templates then render white-on-white).
+ */
+function Background({ color }: { color: string }) {
+  return <View style={{ ...fill, backgroundColor: color }} />;
+}
+
 /** Bordered rectangle inset `inset` preview-px from the page edge. */
 function Frame({
   inset,
@@ -620,7 +630,8 @@ function ClassicMaritimePDF(p: RenderProps) {
   const title = p.certificateTitle?.trim() || "Certificate of Excellence";
 
   return (
-    <Page size="A4" orientation="landscape" wrap={false} style={{ backgroundColor: BG }}>
+    <Page size="A4" orientation="landscape" wrap={false}>
+      <Background color={BG} />
       <Frame inset={0} width={B} color={NAVY} />
       <Frame inset={B + 20} width={2} color={mix("#f59e0b", BG, 0.7)} />
       <Frame inset={B + 32} width={1} color={mix("#1e293b", BG, 0.3)} />
@@ -689,7 +700,8 @@ function PureCleanPDF(p: RenderProps) {
   const title = p.certificateTitle?.trim() || "Certificate of Recognition";
 
   return (
-    <Page size="A4" orientation="landscape" wrap={false} style={{ backgroundColor: WHITE }}>
+    <Page size="A4" orientation="landscape" wrap={false}>
+      <Background color={WHITE} />
       <Frame inset={0} width={B} color={SLATE_200} />
       <Frame inset={B + 24} width={1} color={SLATE_200} radius={8} />
 
@@ -766,7 +778,8 @@ function OceanDepthPDF(p: RenderProps) {
   const title = p.certificateTitle?.trim() || "Certificate of Excellence";
 
   return (
-    <Page size="A4" orientation="landscape" wrap={false} style={{ backgroundColor: BG }}>
+    <Page size="A4" orientation="landscape" wrap={false}>
+      <Background color={BG} />
       <Gradient
         id="ocean-bg"
         x2={1}
@@ -853,7 +866,8 @@ function ExecutiveDistinctionPDF(p: RenderProps) {
   if (p.expiryDate) metaItems.push(["Valid Until", p.expiryDate]);
 
   return (
-    <Page size="A4" orientation="landscape" wrap={false} style={{ backgroundColor: BG }}>
+    <Page size="A4" orientation="landscape" wrap={false}>
+      <Background color={BG} />
       <Frame inset={0} width={B} color={GOLD_FRAME} />
       <Frame inset={B + 16} width={1} color={mix(GOLD_FRAME, BG, 0.6)} radius={2} />
       <Frame inset={B + 28} width={1} color={mix(WHITE, BG, 0.08)} radius={2} />
@@ -1061,7 +1075,8 @@ function OMSPMembershipPDF(p: RenderProps) {
   );
 
   return (
-    <Page size="A4" orientation="landscape" wrap={false} style={{ backgroundColor: WHITE }}>
+    <Page size="A4" orientation="landscape" wrap={false}>
+      <Background color={WHITE} />
       <Gradient
         id="membership-bg"
         x2={1}
