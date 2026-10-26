@@ -1492,16 +1492,13 @@ export default function CertificatesClient({
                   Verify
                 </a>
 
-                {cert.pdf_url && (
-                  <a
-                    href={cert.pdf_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-lg bg-cyan-400/20 px-3 py-2 text-xs text-cyan-100"
-                  >
-                    PDF
-                  </a>
-                )}
+                <a
+                  href={`/api/certificates/${cert.id}/pdf`}
+                  download
+                  className="rounded-lg bg-cyan-400/20 px-3 py-2 text-xs text-cyan-100"
+                >
+                  PDF
+                </a>
 
                 <button
                   onClick={() => resendCertificateEmail(cert)}

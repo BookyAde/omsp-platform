@@ -151,3 +151,11 @@ export const sponsorSchema = z.object({
 });
 
 export type SponsorInput = z.infer<typeof sponsorSchema>;
+
+// ─── Admin Invite ─────────────────────────────────────────────────────────────
+
+export const adminInviteSchema = z.object({
+  email: z.string().trim().email("Please enter a valid email address").max(200),
+  full_name: z.string().trim().min(2, "Name must be at least 2 characters").max(100),
+});
+export type AdminInviteInput = z.infer<typeof adminInviteSchema>;

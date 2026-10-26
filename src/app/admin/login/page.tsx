@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase";
 import Logo from "@/components/layout/Logo";
@@ -8,14 +9,20 @@ import Logo from "@/components/layout/Logo";
 function AdminLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const unauthorized = searchParams.get("error") === "unauthorized";
+  const errorCode = searchParams.get("error");
+  const initialError =
+    errorCode === "unauthorized"
+      ? "You do not have admin access."
+      : errorCode === "invalid_token"
+      ? "That link is invalid or has expired. Request a new one."
+      : errorCode === "session_missing"
+      ? "Your session has expired. Please sign in or request a new link."
+      : "";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(
-    unauthorized ? "You do not have admin access." : ""
-  );
+  const [error, setError] = useState(initialError);
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -85,6 +92,15 @@ function AdminLoginContent() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+            </div>
+
+            <div className="-mt-2 text-right">
+              <Link
+                href="/admin/forgot-password"
+                className="text-sm text-teal-400 hover:text-teal-300 transition-colors"
+              >
+                Forgot password?
+              </Link>
             </div>
 
             {error && (

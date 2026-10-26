@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { createServerSupabaseClient } from "@/lib/supabase";
-import { generateCertificatePDFBlob } from "@/lib/certificates/pdf";
+import {
+  buildCertificatePDFInput,
+  generateCertificatePDFBlob,
+} from "@/lib/certificates/pdf";
 
 export const dynamic = "force-dynamic";
 
@@ -79,51 +82,54 @@ export async function POST(request: NextRequest) {
 
     let pdfUrl: string | null = body.pdf_url || null;
 
+    let pdfBlob: Blob;
     try {
-      const pdfBlob = await generateCertificatePDFBlob({
-        recipientName: body.recipient_name,
-        certificateTitle,
-        certificateId,
-        issueDate,
-        expiryDate: body.expiry_date || null,
-        organizationName: "Organization of Marine Science Professionals",
-        description:
-          designOverrides.description ||
-          "This certificate is issued in recognition of participation, achievement, and professional commitment.",
-        verificationUrl,
-        qrCodeDataUrl,
-        templateId: body.template_id || "classic-maritime",
-        signatoryName:
-          designOverrides.signatureText ||
-          body.signatory_name ||
-          "OMSP Administration",
-        signatoryTitle:
-          designOverrides.signatureTitle ||
-          body.signatory_title ||
-          "Authorized Signatory",
-        designOverrides,
-      });
-
-      const pdfPath = `certificates/${certificateId}.pdf`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("certificates")
-        .upload(pdfPath, pdfBlob, {
-          contentType: "application/pdf",
-          upsert: true,
-        });
-
-      if (uploadError) {
-        console.error("Certificate PDF upload error:", uploadError);
-      } else {
-        const { data: publicUrlData } = supabase.storage
-          .from("certificates")
-          .getPublicUrl(pdfPath);
-
-        pdfUrl = publicUrlData.publicUrl;
-      }
+      pdfBlob = await generateCertificatePDFBlob(
+        buildCertificatePDFInput({
+          recipientName: body.recipient_name,
+          certificateTitle,
+          certificateId,
+          issueDate,
+          expiryDate: body.expiry_date || null,
+          templateId: body.template_id,
+          designOverrides,
+          verificationUrl,
+          qrCodeDataUrl,
+          signatoryName: body.signatory_name,
+          signatoryTitle: body.signatory_title,
+        })
+      );
     } catch (pdfError) {
       console.error("Certificate PDF generation error:", pdfError);
+
+      return NextResponse.json(
+        {
+          error: "PDF generation failed",
+          detail: pdfError instanceof Error ? pdfError.message : String(pdfError),
+        },
+        { status: 500 }
+      );
+    }
+
+    // A storage failure is not fatal: the PDF can still be downloaded on demand
+    // from /api/certificates/[id]/pdf. It only means no stored copy for emailing.
+    const pdfPath = `certificates/${certificateId}.pdf`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("certificates")
+      .upload(pdfPath, pdfBlob, {
+        contentType: "application/pdf",
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error("Certificate PDF upload error:", uploadError);
+    } else {
+      const { data: publicUrlData } = supabase.storage
+        .from("certificates")
+        .getPublicUrl(pdfPath);
+
+      pdfUrl = publicUrlData.publicUrl;
     }
 
     const payload = {

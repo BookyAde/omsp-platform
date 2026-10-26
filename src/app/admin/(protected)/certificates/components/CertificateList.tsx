@@ -107,7 +107,7 @@ export default function CertificateList({ initialCertificates }: { initialCertif
                     <Link href={`/admin/certificates/${cert.id}`} className="text-ocean-400 text-xs border border-ocean-400/30 px-2 py-1 rounded">View</Link>
                     <button onClick={() => downloadQr(cert)} className="text-white text-xs border border-white/20 px-2 py-1 rounded">QR</button>
                     <button onClick={() => copyLink(cert.verification_url)} className="text-white text-xs border border-white/20 px-2 py-1 rounded">Copy</button>
-                    {cert.pdf_url && <a href={cert.pdf_url} target="_blank" className="text-cyan-400 text-xs border border-cyan-400/30 px-2 py-1 rounded">PDF</a>}
+                    <a href={`/api/certificates/${cert.id}/pdf`} download className="text-cyan-400 text-xs border border-cyan-400/30 px-2 py-1 rounded">PDF</a>
                     <button onClick={() => resendEmail(cert)} disabled={sendingId === cert.id || !cert.recipient_email || !cert.pdf_url} className="text-emerald-400 text-xs border border-emerald-400/30 px-2 py-1 rounded disabled:opacity-50">Send</button>
                     <button onClick={() => setActionModal({ type: "revoke", cert })} disabled={cert.status === "revoked"} className="text-amber-400 text-xs border border-amber-400/30 px-2 py-1 rounded">Revoke</button>
                     <button onClick={() => setActionModal({ type: "delete", cert })} className="text-red-400 text-xs border border-red-400/30 px-2 py-1 rounded">Del</button>
@@ -130,7 +130,7 @@ export default function CertificateList({ initialCertificates }: { initialCertif
               <Link href={`/admin/certificates/${cert.id}`} className="text-ocean-400 text-xs border border-ocean-400/30 px-2 py-1 rounded">View</Link>
               <button onClick={() => downloadQr(cert)} className="text-white text-xs border border-white/20 px-2 py-1 rounded">QR</button>
               <button onClick={() => copyLink(cert.verification_url)} className="text-white text-xs border border-white/20 px-2 py-1 rounded">Copy</button>
-              {cert.pdf_url && <a href={cert.pdf_url} target="_blank" className="text-cyan-400 text-xs border border-cyan-400/30 px-2 py-1 rounded">PDF</a>}
+              <a href={`/api/certificates/${cert.id}/pdf`} download className="text-cyan-400 text-xs border border-cyan-400/30 px-2 py-1 rounded">PDF</a>
             </div>
           </div>
         ))}

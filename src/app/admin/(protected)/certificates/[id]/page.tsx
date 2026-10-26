@@ -112,11 +112,9 @@ function CertificateDetail({ cert }: { cert: Certificate }) {
           </div>
         )}
         <div className="flex flex-wrap gap-3 pt-4">
-          {cert.pdf_url && (
-            <a href={cert.pdf_url} target="_blank" rel="noreferrer" className="btn-primary">
-              Download PDF
-            </a>
-          )}
+          <a href={`/api/certificates/${cert.id}/pdf`} download className="btn-primary">
+            Download PDF
+          </a>
           <button onClick={resendEmail} disabled={!cert.recipient_email || !cert.pdf_url} className="btn-secondary disabled:opacity-50">
             Send Email
           </button>
